@@ -1,8 +1,17 @@
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import authConfig from "@/auth.config";
 import { shouldIndexSite } from "@/lib/env";
 
-export function proxy(request: NextRequest) {
+/**
+ * Auth.js keeps the session alive on matched requests.
+ * Custom host rules (lowercase paths, admin noindex) stay here.
+ * @see https://authjs.dev/getting-started/installation?framework=Next.js
+ */
+const { auth } = NextAuth(authConfig);
+
+export const proxy = auth(function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname !== pathname.toLowerCase()) {
@@ -25,7 +34,7 @@ export function proxy(request: NextRequest) {
   }
 
   return response;
-}
+});
 
 export const config = {
   matcher: [

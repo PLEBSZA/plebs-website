@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { signIn, signOut } from "@/lib/auth";
+import { signIn, signOut } from "@/auth";
 import { recordAuditEvent } from "@/lib/admin/audit";
 import { db } from "@/lib/db";
 
