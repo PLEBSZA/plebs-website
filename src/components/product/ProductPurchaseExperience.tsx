@@ -128,16 +128,16 @@ export function ProductPurchasePanel({
               type="button"
               className={styles.colourButton}
               aria-pressed={colour === option.name}
-              disabled={!option.available && option.id !== "forest-green"}
+              disabled={!option.available}
               onClick={() => {
-                if (option.available || option.id === "forest-green") {
+                if (option.available) {
                   setColour(option.name);
                 }
               }}
               data-event="select_colour"
               data-event-label={option.name}
               aria-label={
-                option.available || option.id === "forest-green"
+                option.available
                   ? option.name
                   : `${option.name} availability to be confirmed`
               }
@@ -151,7 +151,7 @@ export function ProductPurchasePanel({
                 aria-hidden="true"
               />
               <span>
-                {option.available || option.id === "forest-green"
+                {option.available
                   ? option.name
                   : `${option.name} — TBC`}
               </span>

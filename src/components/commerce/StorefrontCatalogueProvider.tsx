@@ -66,8 +66,7 @@ export function isCatalogueVariantPurchasable(
   const size = getCatalogueSize(catalogue, input.size);
   return Boolean(
     catalogue.cartEnabled &&
-      colour &&
-      (colour.available || colour.id === "forest-green") &&
+      colour?.available &&
       size?.available &&
       size.stockQuantity > 0,
   );

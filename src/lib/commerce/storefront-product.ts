@@ -133,7 +133,7 @@ export const getStorefrontCatalogue = cache(async function getStorefrontCatalogu
         name: value.label,
         slug: value.slug,
         code: value.code,
-        available: purchasable || value.slug === launchColourSlug,
+        available: purchasable,
         image:
           value.slug === "forest-green" ? primaryProductImage.src : null,
       };
