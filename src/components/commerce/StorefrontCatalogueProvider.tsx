@@ -1,43 +1,12 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
+import { catalogueFromStatic } from "@/lib/commerce/catalogue-from-static";
 import type { StorefrontCatalogue } from "@/lib/commerce/storefront-types";
-import { productData } from "@/lib/product";
 
 const StorefrontCatalogueContext = createContext<StorefrontCatalogue | null>(
   null,
 );
-
-function toCatalogueFromStatic(): StorefrontCatalogue {
-  return {
-    ...productData,
-    productId: "static-fallback",
-    colours: productData.colours.map((colour) => ({
-      ...colour,
-      code: colour.id === "forest-green" ? "FGR" : colour.id.toUpperCase(),
-    })),
-    sizes: productData.sizes.map((size) => ({
-      ...size,
-      code: size.name,
-      sku: size.sku ?? "",
-      variantId: size.id,
-      lowStockThreshold: productData.lowStockThreshold,
-    })),
-    variants: productData.sizes.map((size) => ({
-      id: size.id,
-      sku: size.sku ?? "",
-      colourId: productData.colours[0]?.id ?? "forest-green",
-      colourName: productData.colours[0]?.name ?? "Forest Green",
-      sizeId: size.id,
-      sizeName: size.name,
-      retailPrice: productData.price,
-      available: size.stockQuantity,
-      onHand: size.stockQuantity,
-      reserved: 0,
-      status: size.available ? "ACTIVE" : "INACTIVE",
-    })),
-  };
-}
 
 export function StorefrontCatalogueProvider({
   catalogue,
@@ -47,7 +16,7 @@ export function StorefrontCatalogueProvider({
   children: React.ReactNode;
 }) {
   const value = useMemo(
-    () => catalogue ?? toCatalogueFromStatic(),
+    () => catalogue ?? catalogueFromStatic(),
     [catalogue],
   );
 
@@ -61,7 +30,7 @@ export function StorefrontCatalogueProvider({
 export function useStorefrontCatalogue() {
   const context = useContext(StorefrontCatalogueContext);
   if (!context) {
-    return toCatalogueFromStatic();
+    return catalogueFromStatic();
   }
   return context;
 }

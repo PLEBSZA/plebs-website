@@ -3,7 +3,9 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAnalyticsAllowed } from "@/components/consent/ConsentProvider";
-import { buildAnalyticsItem, productData } from "@/lib/product";
+import { useStorefrontCatalogue } from "@/components/commerce/StorefrontCatalogueProvider";
+import { buildAnalyticsItem } from "@/lib/product";
+import type { StorefrontCatalogue } from "@/lib/commerce/storefront-types";
 
 type AnalyticsPayload = {
   event: string;
@@ -33,6 +35,7 @@ function emit(payload: AnalyticsPayload) {
 }
 
 function ecommerceForEvent(
+  catalogue: StorefrontCatalogue,
   eventName: string,
   variant?: {
     selected_size?: string;
@@ -55,15 +58,16 @@ function ecommerceForEvent(
   if (!itemEvents.has(eventName)) return undefined;
 
   const item = buildAnalyticsItem({
+    catalogue,
     size: variant?.selected_size,
     sku: variant?.variant_sku,
     colour: variant?.colour,
     quantity: variant?.quantity,
   });
   return {
-    currency: productData.currency,
-    ...(productData.commerceEnabled && productData.price != null
-      ? { value: productData.price }
+    currency: catalogue.currency,
+    ...(catalogue.commerceEnabled && catalogue.price != null
+      ? { value: catalogue.price }
       : {}),
     items: [item],
   };
@@ -72,6 +76,7 @@ function ecommerceForEvent(
 export function ConversionEvents() {
   const pathname = usePathname();
   const analyticsAllowed = useAnalyticsAllowed();
+  const catalogue = useStorefrontCatalogue();
 
   useEffect(() => {
     if (!analyticsAllowed) return;
@@ -80,9 +85,9 @@ export function ConversionEvents() {
     emit({
       event,
       path: pathname,
-      ecommerce: ecommerceForEvent(event),
+      ecommerce: ecommerceForEvent(catalogue, event),
     });
-  }, [pathname, analyticsAllowed]);
+  }, [pathname, analyticsAllowed, catalogue]);
 
   useEffect(() => {
     if (!analyticsAllowed) return;
@@ -105,7 +110,7 @@ export function ConversionEvents() {
         availability: element.dataset.availability,
         variant_sku: element.dataset.variantSku ?? null,
         colour: element.dataset.colour,
-        ecommerce: ecommerceForEvent(event, {
+        ecommerce: ecommerceForEvent(catalogue, event, {
           selected_size: element.dataset.selectedSize,
           variant_sku: element.dataset.variantSku ?? null,
           colour: element.dataset.colour,
@@ -157,7 +162,7 @@ export function ConversionEvents() {
       emit({
         ...detail,
         path: window.location.pathname,
-        ecommerce: ecommerceForEvent(detail.event, detail),
+        ecommerce: ecommerceForEvent(catalogue, detail.event, detail),
       });
     }
 
@@ -169,7 +174,7 @@ export function ConversionEvents() {
       document.removeEventListener("submit", onSubmit);
       window.removeEventListener("plebs:commerce-event", onCommerceEvent);
     };
-  }, [analyticsAllowed]);
+  }, [analyticsAllowed, catalogue]);
 
   useEffect(() => {
     if (!analyticsAllowed) return;

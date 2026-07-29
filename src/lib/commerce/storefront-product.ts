@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import {
   ProductStatus,
   PublicationStatus,
@@ -12,6 +13,7 @@ import {
   primaryProductImage,
 } from "@/lib/media";
 import { formatMoney } from "@/lib/money";
+import { catalogueFromStatic } from "@/lib/commerce/catalogue-from-static";
 import { calculateAvailableQuantity } from "@/lib/commerce/inventory-status";
 import type {
   StorefrontCatalogue,
@@ -22,7 +24,8 @@ import { productData as staticFallback } from "@/lib/product";
 
 const DEFAULT_SLUG = "cotton-corduroy-dungarees";
 
-export async function getStorefrontCatalogue(
+/** Canonical storefront product accessor (DB-backed; static seed as fallback). */
+export const getStorefrontCatalogue = cache(async function getStorefrontCatalogue(
   slug = DEFAULT_SLUG,
 ): Promise<StorefrontCatalogue> {
   const product = await db.product.findFirst({
@@ -67,66 +70,7 @@ export async function getStorefrontCatalogue(
   });
 
   if (!product) {
-    const fallbackColour = staticFallback.colours[0];
-    const colours: StorefrontColour[] = staticFallback.colours.map((colour) => ({
-      id: colour.id,
-      name: colour.name,
-      slug: colour.slug,
-      code: colour.id === "forest-green" ? "FGR" : colour.id.toUpperCase(),
-      available: colour.available,
-      image: colour.image,
-    }));
-    const sizes: StorefrontSize[] = staticFallback.sizes.map((size) => ({
-      id: size.id,
-      name: size.name,
-      code: size.name,
-      available: size.available,
-      stockQuantity: size.stockQuantity,
-      sku: size.sku ?? "",
-      variantId: size.id,
-      lowStockThreshold: staticFallback.lowStockThreshold,
-    }));
-
-    return {
-      productId: "static-fallback",
-      name: staticFallback.name,
-      shortName: staticFallback.shortName,
-      slug: staticFallback.slug,
-      path: staticFallback.path,
-      brand: staticFallback.brand,
-      category: staticFallback.category,
-      description: staticFallback.description,
-      material: staticFallback.material,
-      condition: staticFallback.condition,
-      currency: staticFallback.currency,
-      productGroupId: staticFallback.productGroupId,
-      price: staticFallback.price,
-      priceDisplay: staticFallback.priceDisplay,
-      commerceEnabled: staticFallback.commerceEnabled,
-      cartEnabled: staticFallback.cartEnabled,
-      lowStockThreshold: staticFallback.lowStockThreshold,
-      images: {
-        front: staticFallback.images.front,
-        gallery: [...staticFallback.images.gallery],
-        social: staticFallback.images.social,
-        logo: staticFallback.images.logo,
-      },
-      colours,
-      sizes,
-      variants: sizes.map((size) => ({
-        id: size.id,
-        sku: size.sku,
-        colourId: fallbackColour?.id ?? "forest-green",
-        colourName: fallbackColour?.name ?? "Forest Green",
-        sizeId: size.id,
-        sizeName: size.name,
-        retailPrice: staticFallback.price,
-        available: size.stockQuantity,
-        onHand: size.stockQuantity,
-        reserved: 0,
-        status: size.available ? "ACTIVE" : "INACTIVE",
-      })),
-    } satisfies StorefrontCatalogue;
+    return catalogueFromStatic();
   }
 
   const colourOption = product.options.find((option) => option.code === "COLOUR");
@@ -271,7 +215,7 @@ export async function getStorefrontCatalogue(
       status: variant.status,
     })),
   };
-}
+});
 
 export async function findStorefrontVariant(input: {
   colour: string;

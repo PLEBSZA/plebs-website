@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useStorefrontCatalogue } from "@/components/commerce/StorefrontCatalogueProvider";
 import { formatMoney } from "@/lib/money";
-import { productData } from "@/lib/product";
 import styles from "./MobilePurchaseBar.module.css";
 
 export function MobilePurchaseBar() {
+  const catalogue = useStorefrontCatalogue();
   const [heroPassed, setHeroPassed] = useState(false);
   const [purchaseVisible, setPurchaseVisible] = useState(false);
 
@@ -49,7 +50,10 @@ export function MobilePurchaseBar() {
         <div>
           <p className={styles.name}>PLEBS Dungarees</p>
           <p className={styles.price}>
-            {productData.price != null ? formatMoney(productData.price) : "Price TBC"} · Size S available
+            {catalogue.price != null
+              ? formatMoney(catalogue.price)
+              : "Price TBC"}{" "}
+            · Size S available
           </p>
         </div>
         <Link

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { catalogueFromStatic } from "./commerce/catalogue-from-static";
 import { getCanonicalSiteUrl } from "./env";
 import { getAbsoluteAssetUrl, productData } from "./product";
 import { siteConfig } from "./site";
@@ -78,24 +79,22 @@ export function buildFaqPageJsonLd(
 }
 
 /**
- * ProductGroup JSON-LD fully driven by DB variants via the storefront catalogue.
- * Falls back to static product data when catalogue is unavailable.
+ * ProductGroup JSON-LD fully driven by the storefront catalogue.
+ * Falls back to the shared static→catalogue converter when no catalogue is passed.
  */
 export function buildProductGroupJsonLd(
   catalogue?: StorefrontCatalogue | null,
 ): JsonLd {
-  if (!catalogue) {
-    return buildStaticProductGroupJsonLd();
-  }
+  const source = catalogue ?? catalogueFromStatic();
 
-  const productUrl = absoluteUrl(catalogue.path);
+  const productUrl = absoluteUrl(source.path);
   const groupId = `${productUrl}#product-group`;
 
-  const variants = catalogue.variants.map((variant) => {
-    const variantUrl = new URL(catalogue.path, getCanonicalSiteUrl());
+  const variants = source.variants.map((variant) => {
+    const variantUrl = new URL(source.path, getCanonicalSiteUrl());
     variantUrl.searchParams.set(
       "colour",
-      catalogue.colours.find((colour) => colour.id === variant.colourId)?.slug ??
+      source.colours.find((colour) => colour.id === variant.colourId)?.slug ??
         variant.colourId,
     );
     variantUrl.searchParams.set("size", variant.sizeId);
@@ -103,7 +102,7 @@ export function buildProductGroupJsonLd(
     const jsonLdVariant: JsonLd = {
       "@type": "Product",
       "@id": `${productUrl}#${variant.colourId}-${variant.sizeId}`,
-      name: `${catalogue.name} – ${variant.colourName} – ${variant.sizeName}`,
+      name: `${source.name} – ${variant.colourName} – ${variant.sizeName}`,
       color: variant.colourName,
       size: variant.sizeName,
       sku: variant.sku,
@@ -112,118 +111,39 @@ export function buildProductGroupJsonLd(
       offers: {
         "@type": "Offer",
         url: variantUrl.toString(),
-        priceCurrency: catalogue.currency,
+        priceCurrency: source.currency,
         price: variant.retailPrice,
         availability:
           variant.available > 0
             ? "https://schema.org/InStock"
             : "https://schema.org/OutOfStock",
-        itemCondition: catalogue.condition,
+        itemCondition: source.condition,
       },
     };
 
-    if (catalogue.images.gallery.length > 0) {
-      jsonLdVariant.image = catalogue.images.gallery.map(getAbsoluteAssetUrl);
+    if (source.images.gallery.length > 0) {
+      jsonLdVariant.image = source.images.gallery.map(getAbsoluteAssetUrl);
     }
 
     return jsonLdVariant;
   });
 
-  const group: JsonLd = {
+  return {
     "@type": "ProductGroup",
     "@id": groupId,
-    name: catalogue.name,
-    description: catalogue.description,
+    name: source.name,
+    description: source.description,
     url: productUrl,
     brand: {
       "@type": "Brand",
-      name: catalogue.brand,
+      name: source.brand,
     },
-    material: catalogue.material,
-    image: catalogue.images.gallery.map(getAbsoluteAssetUrl),
+    material: source.material,
+    image: source.images.gallery.map(getAbsoluteAssetUrl),
     variesBy: ["https://schema.org/color", "https://schema.org/size"],
     hasVariant: variants,
-    productGroupID: catalogue.productGroupId,
+    productGroupID: source.productGroupId,
   };
-
-  return group;
-}
-
-/** Legacy static fallback when DB catalogue is unavailable. */
-function buildStaticProductGroupJsonLd(): JsonLd {
-  const productUrl = absoluteUrl(productData.path);
-  const groupId = `${productUrl}#product-group`;
-
-  const availableColours = productData.colours.filter(
-    (colour) => colour.available,
-  );
-
-  const variants = availableColours.flatMap((colour) =>
-    productData.sizes.map((size) => {
-      const variant: JsonLd = {
-        "@type": "Product",
-        "@id": `${productUrl}#${colour.id}-${size.id}`,
-        name: `${productData.name} – ${colour.name} – ${size.name}`,
-        color: colour.name,
-        size: size.name,
-        isVariantOf: { "@id": groupId },
-        url: getProductVariantUrl(colour.slug, size.id),
-      };
-
-      if (colour.image) {
-        variant.image = productData.images.gallery.map(getAbsoluteAssetUrl);
-      }
-
-      if (size.sku) {
-        variant.sku = size.sku;
-      }
-
-      variant.offers = {
-        "@type": "Offer",
-        url: getProductVariantUrl(colour.slug, size.id),
-        priceCurrency: productData.currency,
-        availability:
-          size.available && size.stockQuantity > 0
-            ? "https://schema.org/InStock"
-            : "https://schema.org/OutOfStock",
-        itemCondition: productData.condition,
-        ...(productData.commerceEnabled && productData.price != null
-          ? { price: productData.price }
-          : {}),
-      };
-
-      return variant;
-    }),
-  );
-
-  const group: JsonLd = {
-    "@type": "ProductGroup",
-    "@id": groupId,
-    name: productData.name,
-    description: productData.description,
-    url: productUrl,
-    brand: {
-      "@type": "Brand",
-      name: productData.brand,
-    },
-    material: productData.material,
-    image: productData.images.gallery.map(getAbsoluteAssetUrl),
-    variesBy: ["https://schema.org/color", "https://schema.org/size"],
-    hasVariant: variants,
-  };
-
-  if (productData.productGroupId) {
-    group.productGroupID = productData.productGroupId;
-  }
-
-  return group;
-}
-
-function getProductVariantUrl(colourSlug: string, sizeId: string): string {
-  const url = new URL(productData.path, getCanonicalSiteUrl());
-  url.searchParams.set("colour", colourSlug);
-  url.searchParams.set("size", sizeId);
-  return url.toString();
 }
 
 export function buildGraph(nodes: Array<JsonLd | null | undefined>): JsonLd {

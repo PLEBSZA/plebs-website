@@ -7,7 +7,11 @@ import {
 import { formatMoney } from "./money";
 
 /**
- * Single source of product truth for UI, structured data, analytics and feeds.
+ * Static seed / resilience fallback only.
+ * Canonical customer-facing price, stock, and colour/size availability come from
+ * getStorefrontCatalogue() (DB). Convert via catalogueFromStatic() when the DB
+ * is unreachable — do not read price/availability from this object in UI,
+ * analytics, structured data, or feeds.
  */
 export const productData = {
   name: "PLEBS 100% Cotton Corduroy Dungarees",
@@ -141,88 +145,36 @@ export function getAbsoluteAssetUrl(path: string): string {
   return new URL(path, getCanonicalSiteUrl()).toString();
 }
 
-export function buildAnalyticsItem(input?: {
+export function buildAnalyticsItem(input: {
+  catalogue: {
+    name: string;
+    brand: string;
+    category: string;
+    productGroupId: string;
+    slug: string;
+    commerceEnabled: boolean;
+    price: number | null;
+    colours: ReadonlyArray<{ name: string }>;
+  };
   colour?: string;
   size?: string;
   quantity?: number;
   sku?: string | null;
 }) {
-  const colour = input?.colour ?? productData.colours[0]?.name;
-  const size = input?.size;
+  const { catalogue } = input;
+  const colour = input.colour ?? catalogue.colours[0]?.name;
+  const size = input.size;
   const variant = [colour, size].filter(Boolean).join(" / ");
 
   return {
-    item_id: input?.sku ?? productData.productGroupId ?? productData.slug,
-    item_name: productData.name,
-    item_brand: productData.brand,
-    item_category: productData.category,
+    item_id: input.sku ?? catalogue.productGroupId ?? catalogue.slug,
+    item_name: catalogue.name,
+    item_brand: catalogue.brand,
+    item_category: catalogue.category,
     item_variant: variant || undefined,
-    quantity: input?.quantity ?? 1,
-    ...(productData.commerceEnabled && productData.price != null
-      ? { price: productData.price }
+    quantity: input.quantity ?? 1,
+    ...(catalogue.commerceEnabled && catalogue.price != null
+      ? { price: catalogue.price }
       : {}),
   };
-}
-
-export function buildShoppingFeedRow(input?: {
-  colourId?: string;
-  sizeId?: string;
-}) {
-  const colour =
-    productData.colours.find((entry) => entry.id === input?.colourId) ??
-    productData.colours[0];
-  const size = productData.sizes.find((entry) => entry.id === input?.sizeId);
-
-  return {
-    id:
-      [productData.productGroupId, colour?.id, size?.id]
-        .filter(Boolean)
-        .join("-") || productData.slug,
-    title: size
-      ? `PLEBS 100% Cotton Corduroy Dungarees – ${colour?.name} – ${size.name}`
-      : `PLEBS 100% Cotton Corduroy Dungarees – ${colour?.name}`,
-    description:
-      "PLEBS relaxed-fit dungarees made from 100% cotton corduroy. Designed for comfortable layering and everyday wear. View the product page for garment measurements, care instructions, delivery and exchange information.",
-    link: getProductUrl({
-      colour: colour?.slug,
-      size: size?.id,
-    }),
-    image_link: colour?.image
-      ? getAbsoluteAssetUrl(colour.image)
-      : undefined,
-    additional_image_link:
-      colour?.id === "forest-green"
-        ? cottonCorduroyDungareeImages
-            .slice(1)
-            .map((image) => getAbsoluteAssetUrl(image.src))
-        : [],
-    availability:
-      colour?.available && size?.available && (size?.stockQuantity ?? 0) > 0
-        ? "in_stock"
-        : "out_of_stock",
-    price:
-      productData.commerceEnabled && productData.price != null
-        ? `${productData.price} ${productData.currency}`
-        : undefined,
-    brand: productData.brand,
-    condition: "new",
-    color: colour?.name,
-    size: size?.name,
-    material: productData.material,
-    gtin: null as string | null,
-    identifier_exists: false,
-  };
-}
-
-export function buildShoppingFeedRows() {
-  return productData.colours
-    .filter((colour) => colour.available)
-    .flatMap((colour) =>
-      productData.sizes.map((size) =>
-        buildShoppingFeedRow({
-          colourId: colour.id,
-          sizeId: size.id,
-        }),
-      ),
-    );
 }

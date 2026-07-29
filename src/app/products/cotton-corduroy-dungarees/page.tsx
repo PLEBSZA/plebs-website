@@ -2,9 +2,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { createPageMetadata } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
-import { productData } from "@/lib/product";
 import { formatMoney } from "@/lib/money";
 import { brandMedia, cottonCorduroyDetailImages, primaryProductImage } from "@/lib/media";
+import {
+  careInstructions,
+  formatCm,
+  garmentMeasurementsBySize,
+  modelFitInfo,
+  sizeOrder,
+  suggestedBodyRangesCm,
+} from "@/lib/sizing";
 import { DetailSlideshow } from "@/components/product/DetailSlideshow";
 import { ProductPageGallery } from "@/components/product/ProductPageGallery";
 import {
@@ -65,7 +72,7 @@ const productFaqs = [
   {
     question: "Will the fabric shrink?",
     answer:
-      "Cotton may shrink with excessive heat. Follow the final sewn-in care label once production instructions are approved.",
+      "Cotton may shrink with excessive heat. Wash cold or lukewarm on a gentle cycle and hang to dry — avoid tumble drying.",
   },
   {
     question: "Do the colours look exactly the same in person?",
@@ -107,10 +114,9 @@ const specifications = [
   ["Product type", "Corduroy dungarees"],
   ["Included", "One pair of dungarees; packaging contents — confirm"],
   ["Main fabric", "100% cotton corduroy"],
-  ["Fit", "Relaxed / regular / oversized — confirm"],
-  ["Leg shape", "Straight / tapered / wide — confirm"],
-  ["Rise", "Confirm"],
-  ["Closure", "Confirm"],
+  ["Fit", "Relaxed dungaree silhouette"],
+  ["Leg shape", "Wide / straight leg (per size chart leg width)"],
+  ["Closure", "Self-fabric strap ties at the bib"],
   ["Straps", "Fixed / adjustable — confirm"],
   ["Pockets", "Number and placement — confirm"],
   ["Hardware", "Material and finish — confirm"],
@@ -126,16 +132,15 @@ const specifications = [
 ] as const;
 
 const careDetails = [
-  ["Wash temperature", "Confirm"],
-  ["Wash cycle", "Confirm"],
-  ["Wash inside out", "Confirm"],
-  ["Wash with similar colours", "Confirm"],
-  ["Bleach", "Confirm"],
-  ["Tumble dry", "Confirm"],
-  ["Line dry", "Confirm"],
-  ["Ironing temperature", "Confirm"],
-  ["Dry cleaning", "Confirm"],
-  ["Shrinkage allowance", "Confirm"],
+  ["Fibre", careInstructions.fibre],
+  ["Machine wash", careInstructions.machineWash],
+  ["Water temperature", careInstructions.waterTemperature],
+  ["Wash cycle", careInstructions.cycle],
+  ["Wash inside out", careInstructions.insideOut],
+  ["Similar colours", careInstructions.similarColours],
+  ["Bleach", careInstructions.bleach],
+  ["Drying", careInstructions.drying],
+  ["Ironing", careInstructions.ironing],
 ] as const;
 
 const deliveryDetails = [
@@ -194,7 +199,7 @@ export default async function ProductPage() {
           <div className={styles.summary}>
             <p className={styles.eyebrow}>THE PLEBS ORIGINAL</p>
             <h1>PLEBS 100% Cotton Corduroy Dungarees</h1>
-            <p className={styles.price}>{productData.price != null ? formatMoney(productData.price) : siteConfig.product.priceDisplay}</p>
+            <p className={styles.price}>{catalogue.price != null ? formatMoney(catalogue.price) : siteConfig.product.priceDisplay}</p>
             <p className={styles.shortDescription}>
               A relaxed one-piece dungaree made from 100% cotton corduroy.
               Designed with practical details, an easy layering fit and a strong
@@ -300,32 +305,36 @@ export default async function ProductPage() {
               className={styles.tableBlock}
               data-view-event="measurement_table_view"
             >
-              <h3>Body Measurements</h3>
+              <h3>Suggested Body Ranges</h3>
               <div className={styles.tableScroll}>
                 <table>
                   <caption>
-                    Planned body-measurement framework; all values are to be
-                    confirmed.
+                    Approximate body ranges for a relaxed dungaree fit.
                   </caption>
                   <thead>
                     <tr>
                       <th scope="col">Size</th>
-                      <th scope="col">Chest / Bust</th>
-                      <th scope="col">Waist</th>
-                      <th scope="col">Hip</th>
+                      <th scope="col">Waist (approx.)</th>
+                      <th scope="col">Hip (approx.)</th>
                       <th scope="col">Availability</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {productData.sizes.map((size) => (
-                      <tr key={size.id}>
-                        <th scope="row">{size.name}</th>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>{size.available ? "In stock" : "Out of stock"}</td>
-                      </tr>
-                    ))}
+                    {sizeOrder.map((size) => {
+                      const match = catalogue.sizes.find(
+                        (entry) => entry.name === size,
+                      );
+                      return (
+                        <tr key={size}>
+                          <th scope="row">{size}</th>
+                          <td>{suggestedBodyRangesCm[size].waist}</td>
+                          <td>{suggestedBodyRangesCm[size].hip}</td>
+                          <td>
+                            {match?.available ? "In stock" : "Out of stock"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -339,41 +348,51 @@ export default async function ProductPage() {
               <div className={styles.tableScroll}>
                 <table>
                   <caption>
-                    Planned finished-garment framework; all values are to be
-                    confirmed.
+                    Finished garment measurements in centimetres. XS and S are
+                    from the size chart; M–XL are graded from the XS→S
+                    increments.
                   </caption>
                   <thead>
                     <tr>
                       <th scope="col">Size</th>
-                      <th scope="col">Bib Width</th>
+                      <th scope="col">Front bib</th>
                       <th scope="col">Waist</th>
-                      <th scope="col">Hip</th>
-                      <th scope="col">Inseam</th>
-                      <th scope="col">Leg Opening</th>
-                      <th scope="col">Total Length</th>
+                      <th scope="col">Hips</th>
+                      <th scope="col">Thigh</th>
+                      <th scope="col">Leg width</th>
+                      <th scope="col">Total length</th>
                       <th scope="col">Availability</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {productData.sizes.map((size) => (
-                      <tr key={size.id}>
-                        <th scope="row">{size.name}</th>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>TBC</td>
-                        <td>{size.available ? "In stock" : "Out of stock"}</td>
-                      </tr>
-                    ))}
+                    {sizeOrder.map((size) => {
+                      const m = garmentMeasurementsBySize[size];
+                      const match = catalogue.sizes.find(
+                        (entry) => entry.name === size,
+                      );
+                      return (
+                        <tr key={size}>
+                          <th scope="row">{size}</th>
+                          <td>{formatCm(m.frontBib)}</td>
+                          <td>{formatCm(m.waist)}</td>
+                          <td>{formatCm(m.hips)}</td>
+                          <td>{formatCm(m.thighWidth)}</td>
+                          <td>{formatCm(m.legWidth)}</td>
+                          <td>{formatCm(m.length)}</td>
+                          <td>
+                            {match?.available ? "In stock" : "Out of stock"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
               <p className={styles.tableNote}>
-                All garment measurements will be taken with the dungarees laid
-                flat unless otherwise stated. Production tolerance wording will
-                be added only after the acceptable range is confirmed.
+                Strap length {formatCm(garmentMeasurementsBySize.S.strapLength)}{" "}
+                × width {formatCm(garmentMeasurementsBySize.S.strapWidth)} across
+                sizes. Graded M–XL values should be confirmed when those sizes
+                return to stock.
               </p>
             </div>
 
@@ -382,26 +401,23 @@ export default async function ProductPage() {
                 <h3>How to Measure for Your PLEBS Dungarees</h3>
                 <dl className={styles.measureList}>
                   <div>
-                    <dt>Chest or bust</dt>
-                    <dd>
-                      Measure around the fullest part while keeping the tape level.
-                    </dd>
-                  </div>
-                  <div>
                     <dt>Waist</dt>
                     <dd>
-                      Measure where you expect the dungarees to sit without pulling
-                      the tape tightly.
+                      Measure where you expect the dungarees to sit without
+                      pulling the tape tightly.
                     </dd>
                   </div>
                   <div>
                     <dt>Hip</dt>
-                    <dd>Measure around the fullest part of the hips and seat.</dd>
+                    <dd>
+                      Measure around the fullest part of the hips and seat.
+                    </dd>
                   </div>
                   <div>
-                    <dt>Inseam</dt>
+                    <dt>Length preference</dt>
                     <dd>
-                      Measure from the upper inner leg to the desired trouser hem.
+                      Compare total garment length with a favourite one-piece or
+                      high-rise trouser you already own.
                     </dd>
                   </div>
                   <div>
@@ -415,16 +431,16 @@ export default async function ProductPage() {
               </div>
               <div data-view-event="model_fit_information_view">
                 <h3>Model Fit Information</h3>
+                <p className={styles.tableNote}>{modelFitInfo.note}</p>
                 <div className={styles.modelCards}>
                   {[1, 2].map((model) => (
                     <article key={model}>
                       <h4>Model {model}</h4>
-                      <p>Height: TBC</p>
-                      <p>Chest / Bust: TBC</p>
-                      <p>Waist: TBC</p>
-                      <p>Hip: TBC</p>
-                      <p>Wearing: Size TBC</p>
-                      <p>Fit shown: TBC</p>
+                      <p>{modelFitInfo.genderLabel}</p>
+                      <p>Height: {modelFitInfo.heightDisplay}</p>
+                      <p>Weight: {modelFitInfo.weightDisplay}</p>
+                      <p>Wearing: Size {modelFitInfo.sizeWorn}</p>
+                      <p>Fit shown: {modelFitInfo.fitShown}</p>
                     </article>
                   ))}
                 </div>
@@ -461,28 +477,30 @@ export default async function ProductPage() {
               </p>
               <dl className={styles.fabricTbc}>
                 <div>
-                  <dt>Fabric weight</dt>
-                  <dd>TBC</dd>
-                </div>
-                <div>
-                  <dt>Wale width</dt>
-                  <dd>TBC</dd>
-                </div>
-                <div>
-                  <dt>Wash treatment</dt>
-                  <dd>TBC</dd>
+                  <dt>Fibre</dt>
+                  <dd>100% cotton corduroy</dd>
                 </div>
                 <div>
                   <dt>Stretch</dt>
-                  <dd>TBC</dd>
+                  <dd>None declared (no elastane on care label)</dd>
+                </div>
+                <div>
+                  <dt>Wash</dt>
+                  <dd>Cold or lukewarm, gentle cycle, inside out</dd>
+                </div>
+                <div>
+                  <dt>Dry</dt>
+                  <dd>Hang / air-dry — avoid tumble drying</dd>
                 </div>
                 <div>
                   <dt>Expected shrinkage</dt>
-                  <dd>TBC</dd>
+                  <dd>
+                    Possible with heat; hang-dry to protect finished size
+                  </dd>
                 </div>
                 <div>
-                  <dt>Seasonal suitability</dt>
-                  <dd>TBC</dd>
+                  <dt>Fabric weight / wale</dt>
+                  <dd>Not published for this fabric lot</dd>
                 </div>
               </dl>
               <Link href="/cotton-corduroy/" className={styles.textLink}>
@@ -522,12 +540,11 @@ export default async function ProductPage() {
               <h2>How to Care for Your Corduroy Dungarees</h2>
               <p>
                 Follow the care label attached to the garment. Cotton corduroy
-                should generally be treated carefully to preserve its colour,
-                ribbed texture and shape.
+                should be washed gently and hang-dried to preserve colour,
+                ribbed texture and size.
               </p>
               <p className={styles.accuracyNote}>
-                The final instructions must match the sewn-in production care
-                label.
+                Instructions match the PLEBS 100% cotton care label artwork.
               </p>
               <Link
                 href="/care-guide/"
@@ -649,7 +666,7 @@ export default async function ProductPage() {
             </div>
             <div>
               <p className={styles.finalName}>{siteConfig.product.name}</p>
-              <p className={styles.price}>{productData.price != null ? formatMoney(productData.price) : siteConfig.product.priceDisplay}</p>
+              <p className={styles.price}>{catalogue.price != null ? formatMoney(catalogue.price) : siteConfig.product.priceDisplay}</p>
               <ProductPurchasePanel id="final-purchase" compact />
             </div>
           </div>

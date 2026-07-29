@@ -2,13 +2,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 import { formatMoney } from "@/lib/money";
 import { primaryProductImage } from "@/lib/media";
-import { productData } from "@/lib/product";
 import { siteConfig } from "@/lib/site";
 import styles from "./FinalPurchase.module.css";
 
-export function FinalPurchase() {
+export async function FinalPurchase() {
+  const catalogue = await getStorefrontCatalogue();
+
   return (
     <section
       id="purchase"
@@ -36,8 +38,8 @@ export function FinalPurchase() {
           <div className={styles.productMeta}>
             <p className={styles.productName}>{siteConfig.product.name}</p>
             <p className={styles.price}>
-              {productData.price != null
-                ? formatMoney(productData.price)
+              {catalogue.price != null
+                ? formatMoney(catalogue.price)
                 : siteConfig.product.priceDisplay}
             </p>
             <p className={styles.stock}>

@@ -1,13 +1,15 @@
 import Image from "next/image";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { SecondaryButton } from "@/components/ui/SecondaryButton";
+import { getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 import { formatMoney } from "@/lib/money";
 import { primaryProductImage } from "@/lib/media";
-import { productData } from "@/lib/product";
 import { siteConfig } from "@/lib/site";
 import styles from "./Hero.module.css";
 
-export function Hero() {
+export async function Hero() {
+  const catalogue = await getStorefrontCatalogue();
+
   return (
     <section id="hero" className={styles.hero} aria-labelledby="hero-heading">
       <div className={`container ${styles.grid}`}>
@@ -22,8 +24,8 @@ export function Hero() {
             earth-toned colourways.
           </p>
           <p className={styles.price}>
-            {productData.price != null
-              ? formatMoney(productData.price)
+            {catalogue.price != null
+              ? formatMoney(catalogue.price)
               : siteConfig.product.priceDisplay}
           </p>
           <div className={styles.actions}>
