@@ -1,66 +1,42 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { Hero } from "@/components/home/Hero";
+import { ProductIntroduction } from "@/components/home/ProductIntroduction";
+import { ProductFeatures } from "@/components/home/ProductFeatures";
+import { ColourSection } from "@/components/home/ColourSection";
+import { FitSection } from "@/components/home/FitSection";
+import { MaterialSection } from "@/components/home/MaterialSection";
+import { LifestyleSection } from "@/components/home/LifestyleSection";
+import { ProductGallery } from "@/components/home/ProductGallery";
+import { ProofSection } from "@/components/home/ProofSection";
+import { FaqSection } from "@/components/home/FaqSection";
+import { FinalPurchase } from "@/components/home/FinalPurchase";
+import { ProductTrustStrip } from "@/components/product/ProductTrustStrip";
+import { MobilePurchaseBar } from "@/components/layout/MobilePurchaseBar";
+import { createPageMetadata } from "@/lib/metadata";
 
-export default function Home() {
+export const metadata = createPageMetadata({
+  title: "Corduroy Dungarees in 100% Cotton | PLEBS",
+  description:
+    "Discover PLEBS 100% cotton corduroy dungarees, designed with a relaxed fit, practical details and a distinctive textured finish.",
+  path: "/",
+  absoluteTitle: true,
+});
+
+export default function HomePage() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <>
+      <Hero />
+      <ProductTrustStrip />
+      <ProductIntroduction />
+      <ProductFeatures />
+      <ColourSection />
+      <FitSection />
+      <MaterialSection />
+      <LifestyleSection />
+      <ProductGallery />
+      <ProofSection />
+      <FaqSection />
+      <FinalPurchase />
+      <MobilePurchaseBar />
+    </>
   );
 }

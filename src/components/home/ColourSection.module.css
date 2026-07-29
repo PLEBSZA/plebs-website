@@ -1,0 +1,51 @@
+.grid {
+  display: grid;
+  gap: 2rem;
+  width: min(100% - (var(--gutter) * 2), var(--content-max));
+  margin-inline: auto;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+  }
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.colourStory {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.colourStory h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.swatch {
+  min-height: 7rem;
+  display: flex;
+  align-items: flex-end;
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: 650;
+}
+
+.forest {
+  background: var(--color-forest);
+  color: var(--color-cream);
+}
+
+.earth {
+  background: var(--color-earth);
+  color: var(--color-cream);
+}
+

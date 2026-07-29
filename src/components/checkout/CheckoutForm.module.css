@@ -1,0 +1,221 @@
+.form {
+  display: grid;
+  gap: var(--space-7);
+}
+
+@media (min-width: 900px) {
+  .form {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
+    gap: var(--space-8);
+  }
+}
+
+.main {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.main h1 {
+  margin: 0;
+  font-size: var(--font-size-h2);
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: var(--space-4);
+  color: var(--color-charcoal-950);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 650;
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-charcoal-950);
+  font-size: var(--font-size-body-sm);
+  font-weight: 700;
+}
+
+.field input {
+  min-height: 3rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background: var(--color-cream-50);
+  color: var(--color-charcoal-950);
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 3rem;
+  color: var(--color-charcoal-950);
+  font-size: var(--font-size-body-sm);
+  font-weight: 600;
+}
+
+.checkbox input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--color-forest-900);
+}
+
+.shippingOption {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: var(--color-sand-200);
+}
+
+.shippingOption strong {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-charcoal-950);
+}
+
+.shippingOption p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.paymentNote {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-medium);
+  background: rgba(138, 97, 34, 0.08);
+  color: var(--color-charcoal-950);
+  font-size: var(--font-size-body-sm);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error);
+  font-weight: 700;
+}
+
+.submit {
+  width: 100%;
+  min-height: 3.5rem;
+  border: 1px solid var(--color-forest-900);
+  border-radius: var(--radius-small);
+  background: var(--color-forest-900);
+  color: var(--color-cream-50);
+  font-weight: 750;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.submit:hover:not(:disabled) {
+  background: var(--color-forest-800);
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sidebar {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: var(--color-sand-200);
+}
+
+@media (min-width: 900px) {
+  .sidebar {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-6));
+  }
+}
+
+.sidebar h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.summaryLine {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-muted);
+}
+
+.summaryLine strong {
+  color: var(--color-charcoal-950);
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-charcoal-950);
+  font-size: var(--font-size-body);
+  font-weight: 750;
+}
+
+.trust {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.trust p {
+  margin: 0;
+  color: var(--color-moss-700);
+  font-size: var(--font-size-body-sm);
+  font-weight: 600;
+}
+
+.empty {
+  display: grid;
+  gap: var(--space-4);
+  padding-block: var(--space-9);
+}
+
+.empty h1 {
+  margin: 0;
+  font-size: var(--font-size-h2);
+}
+
+.empty p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.empty a {
+  color: var(--color-forest-900);
+  font-weight: 700;
+}

@@ -1,0 +1,349 @@
+.priceDisplay {
+  margin: 0;
+  color: var(--color-forest-900);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 650;
+}
+
+.panel {
+  display: grid;
+  gap: 1.1rem;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-cream-50);
+}
+
+.compact {
+  margin-top: 0;
+}
+
+.fieldset {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.fieldset > legend,
+.legendRow p {
+  margin: 0;
+  color: var(--color-charcoal);
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.legendRow a {
+  color: var(--color-forest);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.colours {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.colourButton {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-cream);
+  color: var(--color-charcoal);
+  text-align: left;
+  cursor: pointer;
+}
+
+.colourButton[aria-pressed="true"] {
+  border-color: var(--color-forest);
+  box-shadow: inset 0 0 0 1px var(--color-forest);
+}
+
+.colourButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.forestSwatch,
+.earthSwatch {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 2px solid var(--color-cream);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-border-strong);
+}
+
+.forestSwatch {
+  background: var(--color-forest);
+}
+
+.earthSwatch {
+  background: var(--color-earth);
+}
+
+.sizes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(2.75rem, 1fr));
+  gap: 0.5rem;
+}
+
+.sizeButton {
+  min-width: 2.75rem;
+  min-height: 3rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-cream);
+  color: var(--color-charcoal);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.sizeButton:not(:disabled):hover {
+  border-color: var(--color-forest);
+}
+
+.selectedSize {
+  border-color: var(--color-forest-900);
+  background: var(--color-forest-900);
+  color: var(--color-cream-50);
+}
+
+.unavailableSize {
+  color: var(--color-charcoal-700);
+  background:
+    linear-gradient(
+      to bottom right,
+      transparent 48%,
+      var(--color-charcoal-700) 49%,
+      var(--color-charcoal-700) 51%,
+      transparent 52%
+    ),
+    var(--color-sand-200);
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
+.availabilityNote,
+.stock,
+.status,
+.error {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.availabilityNote,
+.stock {
+  color: var(--color-muted);
+}
+
+.error {
+  color: var(--color-error);
+  font-weight: 700;
+}
+
+.status {
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-moss);
+  background: rgba(111, 128, 97, 0.12);
+  color: var(--color-forest-deep);
+}
+
+.messageSlot {
+  min-height: 3rem;
+}
+
+.purchaseRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stock {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.inStockBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: rgba(45, 104, 71, 0.12);
+  color: var(--color-success);
+  font-size: var(--font-size-label);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quantity {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--color-charcoal);
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 2.75rem 2.75rem 2.75rem;
+  align-items: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-cream);
+}
+
+.stepper button,
+.stepper output {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-charcoal);
+}
+
+.stepper button {
+  cursor: pointer;
+}
+
+.stepper button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.addButton {
+  min-height: 3.25rem;
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--color-forest-900);
+  border-radius: var(--radius-small);
+  background: var(--color-forest-900);
+  color: var(--color-cream-50);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.addButton:hover {
+  background: var(--color-forest-800);
+  transform: translateY(-1px);
+}
+
+.reassurance {
+  display: grid;
+  gap: 0.7rem;
+  padding-top: 0.25rem;
+}
+
+.reassurance p {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.reassurance strong {
+  color: var(--color-forest-deep);
+}
+
+.reassurance span {
+  color: var(--color-muted);
+}
+
+.stickyBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  padding: 0.65rem var(--gutter) calc(0.65rem + var(--safe-bottom));
+  border-top: 1px solid var(--color-border);
+  background: rgba(247, 242, 232, 0.97);
+  box-shadow: 0 -8px 24px rgba(16, 42, 32, 0.1);
+  transform: translateY(110%);
+  transition: transform var(--duration) var(--ease-out);
+  pointer-events: none;
+}
+
+.stickyVisible {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.stickyInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+}
+
+.stickyInner p,
+.stickyInner span {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.stickyInner p {
+  color: var(--color-forest-deep);
+  font-weight: 750;
+}
+
+.stickyInner span {
+  color: var(--color-muted);
+}
+
+.stickyInner button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: var(--color-forest-900);
+  color: var(--color-cream-50);
+  font-size: var(--text-sm);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+@media (max-width: 899px) {
+  .panel:not(.compact) {
+    margin-top: var(--space-6);
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+}
+
+@media (min-width: 900px) {
+  .stickyBar {
+    display: none;
+  }
+}

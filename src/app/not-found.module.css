@@ -1,0 +1,48 @@
+.page {
+  min-height: 60vh;
+  display: grid;
+  align-items: center;
+  padding-block: var(--section-space);
+  background:
+    radial-gradient(circle at top left, rgba(232, 221, 200, 0.9), transparent 45%),
+    linear-gradient(180deg, var(--color-cream), var(--color-sand));
+}
+
+.inner {
+  max-width: 40rem;
+}
+
+.kicker {
+  margin: 0 0 0.75rem;
+  color: var(--color-moss);
+  font-size: var(--text-xs);
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.inner h1 {
+  margin: 0 0 1rem;
+  font-size: var(--text-3xl);
+}
+
+.inner p {
+  margin: 0 0 1.5rem;
+  color: var(--color-muted);
+}
+
+.actions {
+  margin-bottom: 1.5rem;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  list-style: none;
+}
+
+.links a {
+  color: var(--color-forest);
+  font-weight: 700;
+}

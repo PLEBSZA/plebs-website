@@ -1,0 +1,84 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background:
+    linear-gradient(135deg, rgba(23, 56, 42, 0.12), transparent 45%),
+    linear-gradient(180deg, var(--color-cream-50), var(--color-sand-200));
+}
+
+.card {
+  width: min(100%, 26rem);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(251, 248, 241, 0.96);
+  box-shadow: var(--shadow-soft);
+}
+
+.card h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--color-forest-900);
+}
+
+.card p {
+  margin: 0;
+  color: var(--color-charcoal-700);
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.field input {
+  min-height: 2.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0 0.85rem;
+  font: inherit;
+  background: var(--color-white);
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--color-forest-900);
+  outline-offset: 2px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
+.submit {
+  appearance: none;
+  min-height: 2.85rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-forest-900);
+  color: var(--color-cream-50);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.submit:focus-visible {
+  outline: 2px solid var(--color-forest-900);
+  outline-offset: 3px;
+}

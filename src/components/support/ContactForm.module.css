@@ -1,0 +1,69 @@
+.form {
+  display: grid;
+  gap: 1rem;
+  max-width: 36rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-sand);
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field label {
+  color: var(--color-charcoal);
+  font-size: var(--text-sm);
+  font-weight: 750;
+}
+
+.field input,
+.field select,
+.field textarea {
+  min-height: var(--control-height);
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-cream);
+  color: var(--color-charcoal);
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 9rem;
+  resize: vertical;
+}
+
+.button {
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--color-forest);
+  border-radius: var(--radius-sm);
+  background: var(--color-forest);
+  color: var(--color-cream);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-forest-deep);
+}
+
+.help,
+.note {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.help {
+  color: var(--color-muted);
+}
+
+.note {
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-moss);
+  background: rgba(111, 128, 97, 0.12);
+  color: var(--color-forest-deep);
+}

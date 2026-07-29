@@ -1,0 +1,41 @@
+.points {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 760px) {
+  .points {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.points section {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(247, 242, 232, 0.24);
+}
+
+.points h3 {
+  margin: 0 0 0.5rem;
+  font-size: var(--text-lg);
+}
+
+.points p {
+  color: rgba(247, 242, 232, 0.78);
+  font-size: var(--text-sm);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  margin-right: 1.25rem;
+  color: var(--color-sand);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.link:hover {
+  color: var(--color-cream);
+}
