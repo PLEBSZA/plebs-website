@@ -17,7 +17,6 @@ export function NewsletterForm() {
       className={styles.form}
       onSubmit={handleSubmit}
       noValidate
-      data-event="newsletter_signup"
     >
       <label className={styles.label} htmlFor="newsletter-email">
         Join the PLEBS
