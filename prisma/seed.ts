@@ -38,7 +38,7 @@ async function seed() {
       brand: "PLEBS",
       productType: "Dungarees",
       category: "Apparel",
-      mainMaterial: "100% cotton corduroy",
+      mainMaterial: "100% cotton corduroy, 350 GSM",
       itemGroupId: "PLB-D01",
     },
     create: {
@@ -51,7 +51,7 @@ async function seed() {
       category: "Apparel",
       status: ProductStatus.ACTIVE,
       publicationStatus: PublicationStatus.STOREFRONT,
-      mainMaterial: "100% cotton corduroy",
+      mainMaterial: "100% cotton corduroy, 350 GSM",
       itemGroupId: "PLB-D01",
       feedPublicationStatus: FeedStatus.PUBLISHED,
       identifierExists: false,

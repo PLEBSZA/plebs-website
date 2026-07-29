@@ -25,10 +25,9 @@ export function ProductIntroduction() {
               move and wear repeatedly.
             </p>
             <p>
-              Made from 100% cotton corduroy, the design balances comfort,
-              practical details and a strong visual identity without relying on
-              disposable trends. Fit and construction details remain provisional
-              until the production garment is confirmed.
+              Made from 100% cotton corduroy at 350 GSM, the design balances
+              comfort, practical details and a strong visual identity without
+              relying on disposable trends.
             </p>
           </SectionHeading>
           <Link

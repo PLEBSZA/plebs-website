@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { corduroyFabric } from "@/lib/sizing";
 import styles from "./MaterialSection.module.css";
 
 export function MaterialSection() {
@@ -13,31 +14,32 @@ export function MaterialSection() {
             character.
           </p>
           <p>
-            PLEBS uses 100% cotton corduroy for its natural feel and comfortable
-            structure. Final fabric weight and movement claims will be confirmed
-            against the production cloth.
+            PLEBS uses {corduroyFabric.summary} for its natural feel and
+            structured silhouette. The mid-wale rib catches light across the
+            garment without printed graphics.
           </p>
         </SectionHeading>
         <div className={styles.points}>
           <section>
             <h3>Natural Feel</h3>
             <p>
-              Cotton gives the corduroy a natural-fibre foundation without
-              implying unverified organic or sustainability credentials.
+              Cotton gives the corduroy a natural-fibre foundation — 100% cotton
+              cloth with no elastane — without implying unverified organic or
+              sustainability credentials.
             </p>
           </section>
           <section>
             <h3>Distinctive Texture</h3>
             <p>
-              The corduroy ribs catch light across the garment, creating visual
-              depth without printed graphics.
+              Mid-wale ribs catch light across the garment, creating visual depth
+              without printed graphics.
             </p>
           </section>
           <section>
             <h3>Repeat Wear</h3>
             <p>
-              The design is intended for frequent restyling. Durability details
-              will follow final production testing.
+              At 350 GSM the cloth has enough body for everyday restyling. Wash
+              gently and hang-dry to keep the ribs looking sharp.
             </p>
           </section>
         </div>

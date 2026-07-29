@@ -128,8 +128,9 @@ export default function AboutPage() {
             changes subtly with movement and light.
           </p>
           <p>
-            For PLEBS, corduroy creates a stronger identity than a flat woven
-            fabric while remaining practical enough for repeat wear.
+            For PLEBS, 350 GSM mid-wale cotton corduroy creates a stronger
+            identity than a flat woven fabric while remaining practical enough
+            for repeat wear.
           </p>
           <div className="editorial-page__cta">
             <PrimaryButton href="/cotton-corduroy/" eventName="select_item">
@@ -141,11 +142,16 @@ export default function AboutPage() {
         <section>
           <h2>Designed With Intention</h2>
           <p>
-            This section will explain how the dungarees are designed and made
-            once the details are verified. Until then, PLEBS will not publish
-            vague manufacturing claims.
+            The dungarees are cut in a relaxed silhouette from 100% cotton
+            corduroy at 350 GSM, with adjustable self-fabric straps, side
+            pockets and a bib placket. Manufacturing origin details are listed
+            only when verified.
           </p>
           <dl className="editorial-page__specs">
+            <div>
+              <dt>Cloth</dt>
+              <dd>100% cotton corduroy, 350 GSM, mid-wale</dd>
+            </div>
             <div>
               <dt>Country of design</dt>
               <dd>To be confirmed</dd>
@@ -155,20 +161,12 @@ export default function AboutPage() {
               <dd>To be confirmed</dd>
             </div>
             <div>
-              <dt>Prototype development</dt>
-              <dd>To be confirmed</dd>
-            </div>
-            <div>
-              <dt>Fit rounds completed</dt>
-              <dd>To be confirmed</dd>
-            </div>
-            <div>
-              <dt>Fabric sourcing</dt>
-              <dd>To be confirmed</dd>
+              <dt>Fit reference</dt>
+              <dd>Size chart published; models wear Size S</dd>
             </div>
             <div>
               <dt>Colour development</dt>
-              <dd>Green and earth tones — final range to be confirmed</dd>
+              <dd>Forest Green in stock; earth tone when available</dd>
             </div>
           </dl>
           <p className="editorial-page__note">

@@ -16,7 +16,7 @@ import { createPageMetadata } from "@/lib/metadata";
 export const metadata = createPageMetadata({
   title: "Corduroy Dungarees in 100% Cotton | PLEBS",
   description:
-    "Discover PLEBS 100% cotton corduroy dungarees, designed with a relaxed fit, practical details and a distinctive textured finish.",
+    "Discover PLEBS 350 GSM 100% cotton corduroy dungarees, designed with a relaxed fit, practical details and a distinctive mid-wale textured finish.",
   path: "/",
   absoluteTitle: true,
 });

@@ -5,6 +5,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { createPageMetadata } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
+import { corduroyFabric } from "@/lib/sizing";
 import {
   absoluteUrl,
   buildBreadcrumbJsonLd,
@@ -15,7 +16,7 @@ import {
 export const metadata = createPageMetadata({
   title: "What Is 100% Cotton Corduroy? | PLEBS",
   description:
-    "Learn how cotton corduroy is made, what gives it its ribbed texture, how it feels and why PLEBS uses it for its signature dungarees.",
+    "Learn how cotton corduroy is made, what gives it its ribbed texture, how 350 GSM cotton corduroy feels and why PLEBS uses it for its signature dungarees.",
   path: "/cotton-corduroy/",
   absoluteTitle: true,
 });
@@ -24,32 +25,32 @@ const materialFaqs = [
   {
     question: "Is corduroy always made from cotton?",
     answer:
-      "No. Corduroy can be made from cotton, polyester, blends or other fibres. PLEBS uses a main fabric of 100% cotton corduroy.",
+      "No. Corduroy can be made from cotton, polyester, blends or other fibres. PLEBS uses 100% cotton corduroy at 350 GSM.",
   },
   {
     question: "Does cotton corduroy stretch?",
     answer:
-      "Pure cotton corduroy usually has limited stretch unless elastane or another stretch fibre is added. The exact PLEBS construction is still to be confirmed.",
+      "PLEBS cloth has no elastane, so there is no mechanical stretch. The fabric may ease slightly with wear, which is different from stretch.",
   },
   {
     question: "Is corduroy suitable for warm weather?",
     answer:
-      "It depends on fabric weight, construction and layering. Lighter corduroy can work in milder conditions; heavier cloth will generally feel warmer.",
+      "At 350 GSM the cloth is mid-weight: comfortable for mild days with a light top underneath, and substantial enough when the air cools. Very hot, humid days may call for lighter layers.",
   },
   {
     question: "Does corduroy shrink?",
     answer:
-      "Cotton can shrink when exposed to excessive heat and moisture. Follow the care label once the finished garment instructions are confirmed.",
+      "Cotton can shrink with excess heat and moisture. Follow the PLEBS care label: cold or lukewarm gentle wash and hang dry.",
   },
   {
     question: "How do you wash corduroy?",
     answer:
-      "Use the wash method shown on the garment care label. General corduroy care guidance is covered on the PLEBS care guide.",
+      "Use the wash method on the garment care label. The PLEBS care guide covers the full routine for this 350 GSM cotton corduroy.",
   },
   {
     question: "What does wale mean?",
     answer:
-      "Wale refers to the raised vertical rib that gives corduroy its distinctive texture. Wale width affects how fine or bold the surface appears.",
+      "Wale refers to the raised vertical rib that gives corduroy its distinctive texture. PLEBS uses a mid-wale rib — visible texture without an extreme wide-cord look.",
   },
   {
     question: "Is corduroy the same as velvet?",
@@ -59,7 +60,7 @@ const materialFaqs = [
   {
     question: "Does corduroy soften with wear?",
     answer:
-      "Many corduroy garments ease with wear, but the result depends on fabric weight, finish and construction. Softening should not be promised as a universal outcome.",
+      "Mid-weight cotton corduroy often eases with wear. Softening varies with wash habits and how often the garment is worn — it is not guaranteed.",
   },
 ] as const;
 
@@ -75,7 +76,7 @@ export default function CottonCorduroyPage() {
       url: absoluteUrl("/cotton-corduroy/"),
       name: "What Is 100% Cotton Corduroy?",
       description:
-        "Learn how cotton corduroy is made, what gives it its ribbed texture, how it feels and why PLEBS uses it for its signature dungarees.",
+        "Learn how cotton corduroy is made, what gives it its ribbed texture, how 350 GSM cotton corduroy feels and why PLEBS uses it for its signature dungarees.",
       isPartOf: { "@id": `${absoluteUrl("/")}#website` },
     },
     buildFaqPageJsonLd(materialFaqs),
@@ -101,8 +102,9 @@ export default function CottonCorduroyPage() {
             distinguishes corduroy from smooth cotton fabrics.
           </p>
           <p>
-            In 100% cotton corduroy, the main fibre used in the fabric is cotton
-            rather than a cotton-synthetic blend.
+            In 100% cotton corduroy, the cloth is cotton rather than a
+            cotton-synthetic blend. PLEBS dungarees use a 350 GSM mid-wale
+            cotton corduroy with no elastane.
           </p>
         </header>
 
@@ -130,8 +132,8 @@ export default function CottonCorduroyPage() {
           <p>
             Fine-wale corduroy usually looks more refined and flexible. Wider
             wales create a stronger visual texture and often feel more
-            substantial. The exact wale used for the PLEBS dungarees will be
-            stated once the production fabric is confirmed.
+            substantial. PLEBS uses a mid-wale rib — enough texture to read as
+            corduroy in movement and close-up, without an extreme wide-cord look.
           </p>
         </section>
 
@@ -139,7 +141,9 @@ export default function CottonCorduroyPage() {
           <h2>What Does Cotton Corduroy Feel Like?</h2>
           <p>
             Cotton corduroy can feel soft, substantial or structured depending
-            on its weight, wale width and finishing process.
+            on its weight, wale width and finishing process. At 350 GSM with a
+            mid-wale rib, the PLEBS cloth sits in the mid-weight range: enough
+            body for the dungaree silhouette, soft enough for everyday wear.
           </p>
           <p>
             The raised ribs create a tactile surface, while the cotton fibre
@@ -149,23 +153,23 @@ export default function CottonCorduroyPage() {
           <dl className="editorial-page__specs">
             <div>
               <dt>Fabric weight</dt>
-              <dd>To be confirmed</dd>
+              <dd>{corduroyFabric.weightDisplay}</dd>
             </div>
             <div>
               <dt>Wale</dt>
-              <dd>To be confirmed</dd>
+              <dd>{corduroyFabric.wale}</dd>
             </div>
             <div>
               <dt>Stretch</dt>
-              <dd>To be confirmed</dd>
+              <dd>{corduroyFabric.stretch}</dd>
             </div>
             <div>
               <dt>Finish</dt>
-              <dd>To be confirmed</dd>
+              <dd>{corduroyFabric.finish}</dd>
             </div>
             <div>
               <dt>Seasonal suitability</dt>
-              <dd>To be confirmed</dd>
+              <dd>{corduroyFabric.seasonalSuitability}</dd>
             </div>
           </dl>
         </section>
@@ -229,9 +233,9 @@ export default function CottonCorduroyPage() {
           <h2>Is Corduroy Breathable or Warm?</h2>
           <p>
             Corduroy’s comfort depends on fabric weight, construction and the
-            clothing worn underneath. Cotton fibres can allow more moisture and
-            air movement than some synthetic alternatives, but thick corduroy
-            will generally feel warmer than lightweight plain-woven cotton.
+            clothing worn underneath. At 350 GSM, PLEBS cotton corduroy feels
+            warmer than lightweight plain-woven cotton while still working as a
+            year-round layering piece with the right top underneath.
           </p>
         </section>
 
@@ -252,9 +256,9 @@ export default function CottonCorduroyPage() {
         <section>
           <h2>Why PLEBS Uses Cotton Corduroy</h2>
           <p>
-            PLEBS uses cotton corduroy because it gives the dungarees a strong
-            silhouette and a visible texture without relying on large prints or
-            decorative branding.
+            PLEBS uses 100% cotton corduroy at 350 GSM because it gives the
+            dungarees a strong silhouette and a visible mid-wale texture without
+            relying on large prints or decorative branding.
           </p>
           <p>
             It also works naturally with the green and earth-tone palette that

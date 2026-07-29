@@ -160,6 +160,25 @@ export const modelFitInfo = {
   note: "All models shown wear Size S.",
 } as const;
 
+/**
+ * Confirmed corduroy cloth for the PLEBS dungarees.
+ * Fabric weight is GSM (grams per square metre), not finished garment weight.
+ */
+export const corduroyFabric = {
+  fibre: "100% cotton",
+  construction: "Corduroy",
+  weightGsm: 350,
+  weightDisplay: "350 GSM",
+  stretch: "None — no elastane",
+  wale: "Mid-wale rib",
+  finish: "Natural cotton hand with a structured, light-catching rib",
+  seasonalSuitability:
+    "Year-round layering fabric; 350 GSM feels substantial in cooler weather without becoming a winter-only cloth",
+  summary: "100% cotton corduroy, 350 GSM",
+  handFeel:
+    "A mid-weight cotton corduroy with enough body to hold the dungaree silhouette while staying soft enough for everyday wear.",
+} as const;
+
 /** Care instructions from the PLEBS sewn-in / label artwork. */
 export const careInstructions = {
   fibre: "100% cotton corduroy",
@@ -173,8 +192,8 @@ export const careInstructions = {
     "If needed, iron on the reverse side on low heat; avoid pressing directly on the ribs",
   similarColours: "Wash with similar colours",
   materialNotes: [
-    "100% cotton with no elastane declared on the care label.",
-    "Corduroy has a raised wale texture that can catch lint and flatten under heat or pressure.",
+    "100% cotton corduroy at 350 GSM, with no elastane on the care label.",
+    "Corduroy has a raised mid-wale texture that can catch lint and flatten under heat or pressure.",
     "Cotton can shrink with high heat — hang-drying and cooler washing protect size and colour.",
   ],
 } as const;

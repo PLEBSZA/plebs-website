@@ -21,8 +21,8 @@ export const productData = {
   brand: "PLEBS",
   category: "Corduroy Dungarees",
   description:
-    "A relaxed one-piece dungaree made from 100% cotton corduroy. Designed with practical details, an easy layering fit and a strong silhouette in signature PLEBS green and earth tones.",
-  material: "100% cotton corduroy",
+    "A relaxed one-piece dungaree made from 100% cotton corduroy at 350 GSM. Designed with practical details, an easy layering fit and a strong silhouette in signature PLEBS green.",
+  material: "100% cotton corduroy, 350 GSM",
   condition: "https://schema.org/NewCondition" as const,
   currency: "ZAR" as const,
   productGroupId: "PLB-D01",

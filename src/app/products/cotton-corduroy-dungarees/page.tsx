@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { brandMedia, cottonCorduroyDetailImages, primaryProductImage } from "@/lib/media";
 import {
   careInstructions,
+  corduroyFabric,
   formatCm,
   garmentMeasurementsBySize,
   modelFitInfo,
@@ -32,7 +33,7 @@ import styles from "./page.module.css";
 export const metadata = createPageMetadata({
   title: "100% Cotton Corduroy Dungarees | PLEBS",
   description:
-    "Shop PLEBS cotton corduroy dungarees. View product details, available colours, sizing, care information and delivery options. Size S is currently available.",
+    "Shop PLEBS 350 GSM cotton corduroy dungarees. View product details, available colours, sizing, care information and delivery options. Size S is currently available.",
   path: "/products/cotton-corduroy-dungarees/",
   absoluteTitle: true,
   image: {
@@ -47,12 +48,12 @@ const productFaqs = [
   {
     question: "Are the dungarees made from 100% cotton?",
     answer:
-      "The main corduroy fabric is 100% cotton. Hardware, thread, labels and trims will be listed separately where relevant.",
+      "Yes. The cloth is 100% cotton corduroy at 350 GSM, with no elastane. Metal hardware on the bib is listed separately from the cotton materials.",
   },
   {
     question: "Are the dungarees unisex?",
     answer:
-      "The intended audience and grading still need verification. Garment measurements and model information will guide fit choice.",
+      "They are graded as a relaxed dungaree across XS–XL. Choose from finished garment measurements and the size guide rather than gendered size labels alone.",
   },
   {
     question: "Should I choose my normal size?",
@@ -62,12 +63,12 @@ const productFaqs = [
   {
     question: "Can I wear the dungarees over a jersey?",
     answer:
-      "Layering room depends on body measurements, selected size and layer thickness. Final fit testing will confirm guidance.",
+      "Yes. The relaxed cut and mid-weight 350 GSM corduroy are intended for layering over T-shirts and light knits. Compare thigh and bib measurements if you layer heavily.",
   },
   {
     question: "Does cotton corduroy stretch?",
     answer:
-      "The exact fabric construction is TBC. Natural easing is not the same as mechanical stretch and will not be marketed as such.",
+      "No mechanical stretch — the cloth has no elastane. The fabric can ease slightly with wear, which is not the same as stretch.",
   },
   {
     question: "Will the fabric shrink?",
@@ -77,12 +78,12 @@ const productFaqs = [
   {
     question: "Do the colours look exactly the same in person?",
     answer:
-      "Photography will aim for accuracy, but screens and lighting can affect how colour appears.",
+      "Photography aims for accuracy, but screens and lighting can still shift how Forest Green appears.",
   },
   {
     question: "Can I exchange the dungarees if the size is wrong?",
     answer:
-      "Size exchanges will follow the published policy. The exchange window and return-condition requirements are still TBC.",
+      "Size exchanges follow the published Shipping & Returns and Refund Policy pages once your order terms are confirmed at checkout.",
   },
   {
     question: "Where are the dungarees made?",
@@ -94,41 +95,41 @@ const productFaqs = [
 const highlights = [
   {
     title: "100% Cotton Corduroy",
-    text: "A tactile natural-fibre main fabric with a structured ribbed finish.",
+    text: "350 GSM mid-wale cotton corduroy with a structured, tactile rib and no elastane.",
   },
   {
     title: "Relaxed Fit",
-    text: "The intended fit supports comfortable movement and layering; final grading is TBC.",
+    text: "Easy through the body for movement and layering, with finished measurements published in the size guide.",
   },
   {
     title: "Practical Construction",
-    text: "Functional details are planned for everyday use and await final specification.",
+    text: "Side pockets, bib placket with button hardware, and adjustable self-fabric strap ties.",
   },
   {
     title: "Distinctive Colour",
-    text: "Rich green leads a PLEBS palette with additional earth tones still to be confirmed.",
+    text: "Signature Forest Green leads the range; an earth tone colourway is listed when available.",
   },
 ] as const;
 
 const specifications = [
   ["Product type", "Corduroy dungarees"],
-  ["Included", "One pair of dungarees; packaging contents — confirm"],
-  ["Main fabric", "100% cotton corduroy"],
+  ["Included", "One pair of dungarees"],
+  ["Main fabric", corduroyFabric.summary],
+  ["Fabric weight", corduroyFabric.weightDisplay],
+  ["Wale", corduroyFabric.wale],
+  ["Stretch", corduroyFabric.stretch],
   ["Fit", "Relaxed dungaree silhouette"],
   ["Leg shape", "Wide / straight leg (per size chart leg width)"],
   ["Closure", "Self-fabric strap ties at the bib"],
-  ["Straps", "Fixed / adjustable — confirm"],
-  ["Pockets", "Number and placement — confirm"],
-  ["Hardware", "Material and finish — confirm"],
-  ["Thread composition", "Confirm if relevant"],
-  ["Lining", "None / partial / full — confirm"],
-  ["Available colours", "Confirm"],
+  ["Straps", "Adjustable knotted self-fabric straps (40.6 cm × 2.0 cm)"],
+  ["Pockets", "Side pockets with bib front"],
+  ["Hardware", "Metal buttons on the bib placket"],
+  ["Thread", "Cotton"],
+  ["Lining", "Unlined"],
+  ["Available colours", "Forest Green (in stock); earth tone when available"],
   ["Available size", "S — in stock"],
   ["Other sizes", "XS, M, L and XL — currently out of stock"],
-  ["Garment weight", "Confirm if useful"],
-  ["Country of design", "Confirm"],
-  ["Country of manufacture", "Confirm"],
-  ["Product code / SKU", "Confirm"],
+  ["Product code / SKU", "PLB-D01"],
 ] as const;
 
 const careDetails = [
@@ -201,13 +202,13 @@ export default async function ProductPage() {
             <h1>PLEBS 100% Cotton Corduroy Dungarees</h1>
             <p className={styles.price}>{catalogue.price != null ? formatMoney(catalogue.price) : siteConfig.product.priceDisplay}</p>
             <p className={styles.shortDescription}>
-              A relaxed one-piece dungaree made from 100% cotton corduroy.
-              Designed with practical details, an easy layering fit and a strong
-              silhouette in signature PLEBS green and earth tones.
+              A relaxed one-piece dungaree made from 100% cotton corduroy at
+              350 GSM. Designed with practical details, an easy layering fit and
+              a strong silhouette in signature PLEBS green.
             </p>
             <p className={styles.accuracyNote}>
-              Fit, construction and colour availability remain provisional until
-              the production garment is confirmed.
+              Mid-wale 350 GSM cotton corduroy — structured enough to hold the
+              silhouette, soft enough for everyday wear.
             </p>
             <ProductPurchasePanel id="purchase" />
           </div>
@@ -242,10 +243,9 @@ export default async function ProductPage() {
                 combinations.
               </p>
               <p>
-                The main fabric is made from 100% cotton corduroy. Its raised
-                vertical ribs give the garment depth, while the dungaree
-                construction allows the fabric to hold its shape without appearing
-                overly formal.
+                The cloth is 100% cotton corduroy at 350 GSM. Its raised mid-wale
+                ribs give the garment depth, while the dungaree construction lets
+                the fabric hold its shape without appearing overly formal.
               </p>
               <p>
                 Wear the dungarees over a simple T-shirt, add a knit when the
@@ -265,13 +265,13 @@ export default async function ProductPage() {
             <div>
               <h2>Product Details</h2>
               <p>
-                The main fabric composition is confirmed. Every other specification
-                remains visible as a completion field so commercial copy cannot
-                outrun the finished garment.
+                Fabric, construction and sizing below reflect the production
+                dungarees: 100% cotton corduroy at 350 GSM, with the practical
+                details shown across the product photography.
               </p>
               <p className={styles.accuracyNote}>
-                “Main fabric: 100% cotton corduroy” does not imply that thread,
-                labels, hardware or trims are entirely cotton.
+                Cotton materials cover the cloth and thread. Metal bib hardware
+                is listed separately.
               </p>
             </div>
             <dl className={styles.specs}>
@@ -296,8 +296,9 @@ export default async function ProductPage() {
                 measurements rather than relying only on a usual clothing size.
               </p>
               <p className={styles.accuracyNote}>
-                “Relaxed” remains the intended positioning and must be verified
-                through final grading and fit tests.
+                Published Size S measurements and model references support the
+                relaxed positioning; M–XL values are graded from the confirmed
+                XS→S increment until those sizes are physically re-checked.
               </p>
             </div>
 
@@ -469,20 +470,23 @@ export default async function ProductPage() {
                 through the fabric. These ribs create the recognisable texture and
                 allow the garment to catch light differently across its surface.
               </p>
-              <p>
-                The cotton construction gives the fabric a natural hand feel.
-                Depending on fabric weight and wale width, the finished dungarees
-                may feel soft and flexible or more structured and substantial.
-                Precise wording will follow physical fabric inspection.
-              </p>
+              <p>{corduroyFabric.handFeel}</p>
               <dl className={styles.fabricTbc}>
                 <div>
                   <dt>Fibre</dt>
                   <dd>100% cotton corduroy</dd>
                 </div>
                 <div>
+                  <dt>Fabric weight</dt>
+                  <dd>{corduroyFabric.weightDisplay}</dd>
+                </div>
+                <div>
+                  <dt>Wale</dt>
+                  <dd>{corduroyFabric.wale}</dd>
+                </div>
+                <div>
                   <dt>Stretch</dt>
-                  <dd>None declared (no elastane on care label)</dd>
+                  <dd>{corduroyFabric.stretch}</dd>
                 </div>
                 <div>
                   <dt>Wash</dt>
@@ -498,10 +502,6 @@ export default async function ProductPage() {
                     Possible with heat; hang-dry to protect finished size
                   </dd>
                 </div>
-                <div>
-                  <dt>Fabric weight / wale</dt>
-                  <dd>Not published for this fabric lot</dd>
-                </div>
               </dl>
               <Link href="/cotton-corduroy/" className={styles.textLink}>
                 Learn more about 100% cotton corduroy
@@ -511,24 +511,30 @@ export default async function ProductPage() {
           <div className={`container ${styles.materialBenefits}`}>
             <section>
               <h3>Natural Fibre Feel</h3>
-              <p>The main fabric is cotton rather than polyester-based corduroy.</p>
+              <p>
+                100% cotton corduroy — not a polyester-based cloth — with a
+                natural hand at 350 GSM.
+              </p>
             </section>
             <section>
               <h3>Textured Structure</h3>
               <p>
-                Raised ribs create depth and the distinctive corduroy appearance.
+                Mid-wale ribs create depth and the distinctive corduroy
+                appearance across the silhouette.
               </p>
             </section>
             <section>
               <h3>Designed for Layering</h3>
               <p>
-                The format can be styled over different tops as weather changes.
+                The relaxed dungaree format works over T-shirts and light knits
+                as the weather changes.
               </p>
             </section>
             <section>
               <h3>Made for Repeat Wear</h3>
               <p>
-                This is a design intention, not scientific durability proof.
+                Mid-weight cotton corduroy is chosen for everyday restyling —
+                wash gently and hang-dry to keep the ribs looking sharp.
               </p>
             </section>
           </div>

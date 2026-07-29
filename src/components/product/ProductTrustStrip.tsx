@@ -2,8 +2,8 @@ import styles from "./ProductTrustStrip.module.css";
 
 const defaultItems = [
   "100% Cotton",
-  "Corduroy Texture",
-  "Fit Details Coming Soon",
+  "350 GSM Corduroy",
+  "Mid-Wale Texture",
   "Designed for Everyday Wear",
 ];
 

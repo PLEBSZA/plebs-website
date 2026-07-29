@@ -20,8 +20,8 @@ export async function Hero() {
           </h1>
           <p className={styles.body}>
             Comfortable, distinctive and made to be worn your way. PLEBS
-            dungarees are crafted from 100% cotton corduroy in rich green and
-            earth-toned colourways.
+            dungarees are crafted from 350 GSM 100% cotton corduroy in signature
+            Forest Green.
           </p>
           <p className={styles.price}>
             {catalogue.price != null

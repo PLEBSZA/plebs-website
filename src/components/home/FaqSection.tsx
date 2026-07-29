@@ -8,32 +8,32 @@ const faqs = [
   {
     question: "Are the dungarees made from 100% cotton?",
     answer:
-      "Yes. The main corduroy fabric is made from 100% cotton. Hardware, thread and trim materials will be listed separately in the final product specifications.",
+      "Yes. The cloth is 100% cotton corduroy at 350 GSM, with no elastane. Metal bib hardware is listed separately from the cotton materials.",
   },
   {
     question: "Are the dungarees for women or men?",
     answer:
-      "The intended fit and grading are still being confirmed. PLEBS will only describe the dungarees as unisex once the garment measurements and production grading support that claim.",
+      "They are graded as a relaxed dungaree across XS–XL. Use the size guide and finished garment measurements rather than gendered size labels alone.",
   },
   {
     question: "How should the dungarees fit?",
     answer:
-      "Aim for a comfortable relaxed fit that leaves room to layer. Final fit notes and model references will be added once confirmed.",
+      "Aim for a comfortable relaxed fit that leaves room to layer. Models (1.65 m / 65 kg) wear Size S; compare your measurements to the published size chart.",
   },
   {
     question: "How do I wash cotton corduroy?",
     answer:
-      "Care guidance is still being finalised. Until the full care guide is confirmed, wash gently, avoid high heat, and follow the care label once attached.",
+      "Cold or lukewarm water on a gentle cycle, turn inside out, hang dry, and avoid bleach. Full steps are on the care guide and the sewn-in label.",
   },
   {
     question: "Will cotton corduroy shrink?",
     answer:
-      "Cotton can relax or shrink depending on wash and dry method. Exact shrinkage expectations will be confirmed with finished production samples.",
+      "Cotton can shrink with excess heat. Follow the label — cooler washing and hang-drying protect finished size and the 350 GSM mid-wale ribs.",
   },
   {
     question: "How do I choose the correct size?",
     answer:
-      "Use the size guide and compare your measurements to the garment chart once published. If you are between sizes, fit preference usually decides.",
+      "Use the size guide and compare your measurements to the finished garment chart. If you are between sizes, fit preference usually decides.",
   },
   {
     question: "Where does PLEBS deliver?",
