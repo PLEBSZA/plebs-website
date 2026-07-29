@@ -1,0 +1,6 @@
+﻿assets/source
+docs
+.agents
+.cursor
+.vercel
+*.log
