@@ -1,0 +1,148 @@
+{
+  "capturedAt": "2026-07-30T11:06:58.620Z",
+  "baseUrl": "http://127.0.0.1:3010",
+  "label": "local-proxy",
+  "measurementKind": "local-proxy (TTFB not production-representative)",
+  "runsPerRoute": 3,
+  "formFactor": "mobile",
+  "throttlingMethod": "simulate",
+  "thresholds": {
+    "homePerformance": 0.95,
+    "pdpPerformance": 0.95,
+    "cls": 0.1,
+    "tbtMs": 150,
+    "homeSpeedIndexMs": 3000,
+    "homeImageBytes": 256000
+  },
+  "note": "Lab diagnostics only. Field gate = CrUX p75 over 28 days via PSI / Search Console.",
+  "staleLocalhostReports": ".lighthouse-home.json and .lighthouse-pdp.json (if present) were captured against localhost and must not be cited as production baselines.",
+  "prerenderManifest": {
+    "routes": [
+      "/_global-error",
+      "/apple-icon.png",
+      "/favicon.ico",
+      "/icon.svg",
+      "/robots.txt",
+      "/sitemap.xml"
+    ],
+    "previewModeIdPresent": true
+  },
+  "responseHeaders": {
+    "/": {
+      "status": 200,
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/products/cotton-corduroy-dungarees/": {
+      "status": 200,
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/about/": {
+      "status": 200,
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/size-guide/": {
+      "status": 200,
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/shipping-returns/": {
+      "status": 200,
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/checkout/": {
+      "status": 200,
+      "cache-control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "routes": {
+    "/": {
+      "performance": 0.85,
+      "lcpMs": 3847.4238000000005,
+      "ttfbMs": 2335,
+      "speedIndexMs": 4379.221963557994,
+      "tbtMs": 118.59320000000002,
+      "cls": 0.02528111429509303,
+      "totalBytes": 1097548,
+      "imageBytes": 644354,
+      "scriptBytes": 339790
+    },
+    "/products/cotton-corduroy-dungarees/": {
+      "performance": 0.86,
+      "lcpMs": 3751.3336500000005,
+      "ttfbMs": 955,
+      "speedIndexMs": 2429.1418481097216,
+      "tbtMs": 106.50000000000045,
+      "cls": 0,
+      "totalBytes": 764233,
+      "imageBytes": 304366,
+      "scriptBytes": 341038
+    },
+    "/about/": {
+      "performance": 0.93,
+      "lcpMs": 2987.6676,
+      "ttfbMs": 1034,
+      "speedIndexMs": 2074.6477898932553,
+      "tbtMs": 127,
+      "cls": 0,
+      "totalBytes": 569967,
+      "imageBytes": 136123,
+      "scriptBytes": 335594
+    },
+    "/size-guide/": {
+      "performance": 0.92,
+      "lcpMs": 3038.0239999999994,
+      "ttfbMs": 1092,
+      "speedIndexMs": 2178.8013859309194,
+      "tbtMs": 162.00000000000023,
+      "cls": 0,
+      "totalBytes": 480172,
+      "imageBytes": 43747,
+      "scriptBytes": 335594
+    },
+    "/shipping-returns/": {
+      "performance": 0.94,
+      "lcpMs": 2848.63465,
+      "ttfbMs": 902,
+      "speedIndexMs": 1811.043981914109,
+      "tbtMs": 138,
+      "cls": 0,
+      "totalBytes": 475194,
+      "imageBytes": 43747,
+      "scriptBytes": 335594
+    },
+    "/checkout/": {
+      "performance": 0.93,
+      "lcpMs": 3121.42015,
+      "ttfbMs": 961,
+      "speedIndexMs": 1925.9460599708937,
+      "tbtMs": 93.15050000000019,
+      "cls": 0,
+      "totalBytes": 492752,
+      "imageBytes": 43747,
+      "scriptBytes": 340008
+    }
+  }
+}

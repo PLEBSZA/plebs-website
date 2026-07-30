@@ -45,6 +45,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# performance harness (raw Lighthouse JSON — summaries live in perf-baseline/)
+.perf-raw/
+.lighthouse-home.json
+.lighthouse-pdp.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
