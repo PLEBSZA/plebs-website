@@ -67,6 +67,13 @@ function createOrderNumber() {
   return `PLEBS-${stamp}-${suffix}`;
 }
 
+/** Human-readable RMA reference, same shape as order numbers. */
+export function createReturnReference() {
+  const stamp = Date.now().toString(36).toUpperCase();
+  const suffix = Math.floor(Math.random() * 900 + 100).toString();
+  return `RMA-${stamp}-${suffix}`;
+}
+
 function requireText(value: string | undefined, label: string) {
   const trimmed = value?.trim() ?? "";
   if (!trimmed) throw new Error(`${label} is required.`);

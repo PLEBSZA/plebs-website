@@ -762,6 +762,7 @@ model Refund {
 
 model ReturnRequest {
   id                String             @id @default(cuid())
+  reference         String             @unique
   orderId           String             @map("order_id")
   orderItemId       String             @map("order_item_id")
   customerId        String?            @map("customer_id")
@@ -791,23 +792,30 @@ model ReturnRequest {
 }
 
 model Exchange {
-  id                   String          @id @default(cuid())
-  returnRequestId      String          @unique @map("return_request_id")
-  originalVariantId    String?         @map("original_variant_id")
-  replacementVariantId String          @map("replacement_variant_id")
+  id                   String         @id @default(cuid())
+  returnRequestId      String         @unique @map("return_request_id")
+  originalVariantId    String?        @map("original_variant_id")
+  replacementVariantId String         @map("replacement_variant_id")
   quantity             Int
-  priceDifference      Decimal         @default(0) @map("price_difference") @db.Decimal(12, 2)
-  additionalPayment    Decimal         @default(0) @map("additional_payment") @db.Decimal(12, 2)
-  refundAmount         Decimal         @default(0) @map("refund_amount") @db.Decimal(12, 2)
-  replacementReference String?         @map("replacement_reference")
-  status               ExchangeStatus  @default(REQUESTED)
-  createdAt            DateTime        @default(now()) @map("created_at")
-  updatedAt            DateTime        @updatedAt @map("updated_at")
-  returnRequest        ReturnRequest   @relation(fields: [returnRequestId], references: [id], onDelete: Restrict)
+  priceDifference      Decimal        @default(0) @map("price_difference") @db.Decimal(12, 2)
+  additionalPayment    Decimal        @default(0) @map("additional_payment") @db.Decimal(12, 2)
+  refundAmount         Decimal        @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  replacementReference String?        @map("replacement_reference")
+  courier              String?
+  trackingNumber       String?        @map("tracking_number")
+  trackingUrl          String?        @map("tracking_url")
+  dispatchedAt         DateTime?      @map("dispatched_at")
+  deliveredAt          DateTime?      @map("delivered_at")
+  customerNotifiedAt   DateTime?      @map("customer_notified_at")
+  status               ExchangeStatus @default(REQUESTED)
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+  returnRequest        ReturnRequest  @relation(fields: [returnRequestId], references: [id], onDelete: Restrict)
   originalVariant      ProductVariant? @relation("OriginalExchangeVariant", fields: [originalVariantId], references: [id], onDelete: SetNull)
-  replacementVariant   ProductVariant  @relation("ReplacementExchangeVariant", fields: [replacementVariantId], references: [id], onDelete: Restrict)
+  replacementVariant   ProductVariant @relation("ReplacementExchangeVariant", fields: [replacementVariantId], references: [id], onDelete: Restrict)
 
   @@index([status])
+  @@index([trackingNumber])
   @@map("exchanges")
 }
 

@@ -70,8 +70,9 @@ export function OrderActionsPanel({
   const isFulfilled = fulfilmentStatus === "FULFILLED";
   const isDelivered = fulfilmentStatus === "DELIVERED";
   const isPacked = fulfilmentStatus === "PACKED";
-  // Widened to DELIVERED/RETURNED in PLEBS-ORDERS-002.
-  const canCreateReturn = isFulfilled;
+  // Eligible fulfilment states: FULFILLED | DELIVERED | RETURNED (PLEBS-ORDERS-002).
+  const canCreateReturn =
+    isFulfilled || isDelivered || fulfilmentStatus === "RETURNED";
 
   return (
     <section

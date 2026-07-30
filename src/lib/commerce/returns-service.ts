@@ -5,11 +5,28 @@ import {
   FulfilmentStatus,
   InventoryMovementReason,
   InventoryMovementType,
+  OrderStatus,
   ReturnDisposition,
   ReturnStatus,
 } from "@/generated/prisma/client";
 import { recordAuditEvent } from "@/lib/admin/audit";
+import { reopenOrder } from "@/lib/commerce/fulfilment-service";
 import { db } from "@/lib/db";
+import { createReturnReference } from "@/lib/orders";
+
+const RETURN_ELIGIBLE_FULFILMENT = new Set<FulfilmentStatus>([
+  FulfilmentStatus.FULFILLED,
+  FulfilmentStatus.DELIVERED,
+  FulfilmentStatus.RETURNED,
+]);
+
+const EXCHANGE_SHIPMENT_STATUSES = new Set<ReturnStatus>([
+  ReturnStatus.EXCHANGE_PENDING,
+  ReturnStatus.EXCHANGE_SENT,
+  ReturnStatus.REFUND_PENDING,
+  ReturnStatus.REFUNDED,
+  ReturnStatus.CLOSED,
+]);
 
 export async function listReturnsForAdmin(input?: { take?: number }) {
   return db.returnRequest.findMany({
@@ -39,6 +56,7 @@ export async function getReturnForAdmin(id: string) {
       order: {
         include: {
           items: true,
+          fulfilments: { orderBy: { createdAt: "desc" }, take: 1 },
         },
       },
       orderItem: true,
@@ -69,8 +87,10 @@ export async function createReturnRequest(input: {
     include: { items: true },
   });
 
-  if (order.fulfilmentStatus !== FulfilmentStatus.FULFILLED) {
-    throw new Error("Returns can only be created for fulfilled orders.");
+  if (!RETURN_ELIGIBLE_FULFILMENT.has(order.fulfilmentStatus)) {
+    throw new Error(
+      "Returns can only be created for fulfilled, delivered, or returned orders.",
+    );
   }
 
   const item = order.items.find((entry) => entry.id === input.orderItemId);
@@ -78,8 +98,17 @@ export async function createReturnRequest(input: {
     throw new Error("Order item not found on this order.");
   }
 
+  if (order.status === OrderStatus.COMPLETED) {
+    await reopenOrder({
+      orderId: order.id,
+      userId: input.actorId,
+      reason: "Return opened",
+    });
+  }
+
   const returnRequest = await db.returnRequest.create({
     data: {
+      reference: createReturnReference(),
       orderId: order.id,
       orderItemId: item.id,
       customerId: order.customerId,
@@ -108,6 +137,7 @@ export async function createReturnRequest(input: {
     entityId: returnRequest.id,
     afterState: {
       orderId: order.id,
+      reference: returnRequest.reference,
       reason: returnRequest.reason,
       hasExchange: Boolean(returnRequest.exchange),
     },
@@ -201,6 +231,130 @@ export async function updateReturnStatus(input: {
   });
 
   return updated;
+}
+
+export async function updateExchangeShipment(input: {
+  exchangeId: string;
+  userId: string;
+  courier: string;
+  trackingNumber: string;
+  trackingUrl?: string;
+  note?: string;
+}) {
+  const exchange = await db.exchange.findUniqueOrThrow({
+    where: { id: input.exchangeId },
+    include: { returnRequest: true },
+  });
+
+  if (!EXCHANGE_SHIPMENT_STATUSES.has(exchange.returnRequest.status)) {
+    throw new Error(
+      "Outbound exchange tracking can only be set once the return is at exchange pending or later.",
+    );
+  }
+
+  const courier = input.courier.trim();
+  const trackingNumber = input.trackingNumber.trim();
+  const trackingUrl = input.trackingUrl?.trim() || null;
+  if (!courier || !trackingNumber) {
+    throw new Error("Courier and tracking number are required.");
+  }
+
+  const dispatchedAt = exchange.dispatchedAt ?? new Date();
+  const note = input.note?.trim();
+
+  const updated = await db.$transaction(async (tx) => {
+    const next = await tx.exchange.update({
+      where: { id: exchange.id },
+      data: {
+        courier,
+        trackingNumber,
+        trackingUrl,
+        dispatchedAt,
+        status: ExchangeStatus.EXCHANGE_SENT,
+      },
+    });
+
+    await tx.returnRequest.update({
+      where: { id: exchange.returnRequestId },
+      data: {
+        status: ReturnStatus.EXCHANGE_SENT,
+        internalNotes: note
+          ? [exchange.returnRequest.internalNotes, note]
+              .filter(Boolean)
+              .join("\n")
+          : undefined,
+      },
+    });
+
+    return next;
+  });
+
+  await recordAuditEvent({
+    actorId: input.userId,
+    action: "exchange.shipped",
+    entityType: "exchange",
+    entityId: exchange.id,
+    beforeState: {
+      courier: exchange.courier,
+      trackingNumber: exchange.trackingNumber,
+      trackingUrl: exchange.trackingUrl,
+    },
+    afterState: {
+      courier: updated.courier,
+      trackingNumber: updated.trackingNumber,
+      trackingUrl: updated.trackingUrl,
+      dispatchedAt: updated.dispatchedAt?.toISOString() ?? null,
+    },
+  });
+
+  return updated;
+}
+
+export async function markExchangeDelivered(input: {
+  exchangeId: string;
+  userId: string;
+  deliveredAt?: Date;
+}) {
+  const exchange = await db.exchange.findUniqueOrThrow({
+    where: { id: input.exchangeId },
+  });
+
+  if (exchange.deliveredAt) {
+    return exchange;
+  }
+
+  if (!exchange.dispatchedAt) {
+    throw new Error("Exchange must be shipped before it can be marked delivered.");
+  }
+
+  const deliveredAt = input.deliveredAt ?? new Date();
+  const now = new Date();
+
+  if (deliveredAt.getTime() > now.getTime()) {
+    throw new Error("Delivered date cannot be in the future.");
+  }
+  if (deliveredAt.getTime() < exchange.dispatchedAt.getTime()) {
+    throw new Error("Delivered date cannot be earlier than the dispatch date.");
+  }
+
+  const updated = await db.exchange.update({
+    where: { id: exchange.id },
+    data: { deliveredAt },
+  });
+
+  await recordAuditEvent({
+    actorId: input.userId,
+    action: "exchange.delivered",
+    entityType: "exchange",
+    entityId: exchange.id,
+    afterState: { deliveredAt: deliveredAt.toISOString() },
+  });
+
+  return updated;
+}
+
+export function canShowExchangeShipmentForm(status: ReturnStatus) {
+  return EXCHANGE_SHIPMENT_STATUSES.has(status);
 }
 
 async function restockReturnedVariant(input: {

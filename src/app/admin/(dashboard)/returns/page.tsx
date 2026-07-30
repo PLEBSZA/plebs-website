@@ -26,7 +26,7 @@ export default async function AdminReturnsPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th scope="col">ID</th>
+                <th scope="col">Reference</th>
                 <th scope="col">Order</th>
                 <th scope="col">Customer</th>
                 <th scope="col">Reason</th>
@@ -40,7 +40,7 @@ export default async function AdminReturnsPage() {
                 <tr key={entry.id}>
                   <td>
                     <Link href={`/admin/returns/${entry.id}`}>
-                      {entry.id.slice(0, 8)}…
+                      {entry.reference}
                     </Link>
                   </td>
                   <td>
