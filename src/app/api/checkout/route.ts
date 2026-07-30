@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
 import { createOrder } from "@/lib/orders";
-import {
-  initializePaystackPayment,
-  isPaystackConfigured,
-} from "@/lib/commerce/paystack";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -47,20 +43,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (isPaystackConfigured()) {
-    const payment = await initializePaystackPayment(result.order.id);
-    if (payment.ok) {
-      return NextResponse.json({
-        orderId: result.order.id,
-        orderNumber: result.order.number,
-        paymentUrl: payment.authorizationUrl,
-        paymentReference: payment.reference,
-      });
-    }
-  }
-
   return NextResponse.json({
     orderId: result.order.id,
     orderNumber: result.order.number,
+    checkoutToken: result.checkoutToken,
   });
 }

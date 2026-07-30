@@ -1,0 +1,16 @@
+export const emailTemplateAliases = {
+  contactReceived: "plebs-contact-received",
+  contactOwner: "plebs-contact-owner",
+  orderConfirmed: "plebs-order-confirmed",
+  orderOwner: "plebs-order-owner",
+  restockRequested: "plebs-restock-requested",
+  shippingConfirmation: "plebs-shipping-confirmation",
+  refundConfirmation: "plebs-refund-confirmation",
+  orderCancelled: "plebs-order-cancelled",
+  newsletterWelcome: "plebs-newsletter-welcome",
+  newsletterUpdate: "plebs-newsletter-update",
+  abandonedCheckout: "plebs-abandoned-checkout",
+  backInStock: "plebs-back-in-stock",
+  editorialAnnouncement: "plebs-editorial-announcement",
+  returnRequestOwner: "plebs-return-request-owner",
+} as const;

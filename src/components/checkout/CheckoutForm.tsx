@@ -9,7 +9,11 @@ import { productData } from "@/lib/product";
 import { shippingMethods } from "@/lib/shipping";
 import styles from "./CheckoutForm.module.css";
 
-export function CheckoutForm() {
+type CheckoutFormProps = {
+  paymentMode: "test" | "live" | "unconfigured";
+};
+
+export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
   const router = useRouter();
   const { line, subtotal, clearCart } = useCart();
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
@@ -60,7 +64,9 @@ export function CheckoutForm() {
           billingCity: billingSame ? undefined : data.billingCity,
           billingProvince: billingSame ? undefined : data.billingProvince,
           billingPostalCode: billingSame ? undefined : data.billingPostalCode,
-          billingCountry: billingSame ? undefined : (data.billingCountry || "South Africa"),
+          billingCountry: billingSame
+            ? undefined
+            : data.billingCountry || "South Africa",
           shippingMethodId: selectedShipping?.id ?? "standard",
           colour: line.colour,
           size: line.size,
@@ -71,21 +77,20 @@ export function CheckoutForm() {
       const result = (await response.json()) as {
         orderId?: string;
         orderNumber?: string;
-        paymentUrl?: string;
-        paymentReference?: string;
+        checkoutToken?: string;
         message?: string;
       };
 
-      if (!response.ok) {
+      if (!response.ok || !result.orderNumber || !result.checkoutToken) {
         setStatus("error");
-        setError(result.message ?? "Unable to complete your order.");
+        setError(result.message ?? "Unable to save your order details.");
         return;
       }
 
       window.dispatchEvent(
         new CustomEvent("plebs:commerce-event", {
           detail: {
-            event: "purchase",
+            event: "begin_checkout",
             selected_size: line.size,
             availability: "in_stock",
             variant_sku: line.sku,
@@ -96,14 +101,8 @@ export function CheckoutForm() {
       );
 
       clearCart();
-
-      if (result.paymentUrl) {
-        window.location.href = result.paymentUrl;
-        return;
-      }
-
       router.push(
-        `/order-confirmation/?order=${encodeURIComponent(result.orderNumber ?? "")}`,
+        `/checkout/review/?order=${encodeURIComponent(result.orderNumber)}&token=${encodeURIComponent(result.checkoutToken)}`,
       );
     } catch {
       setStatus("error");
@@ -114,7 +113,17 @@ export function CheckoutForm() {
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
       <div className={styles.main}>
+        <p className={styles.step}>Step 1 of 2 · Your details</p>
         <h1>Checkout</h1>
+        <p className={styles.intro}>
+          Enter your delivery details. You&apos;ll review everything and pay on
+          the next step
+          {paymentMode === "test"
+            ? " (Paystack test mode)."
+            : paymentMode === "live"
+              ? " with Paystack."
+              : "."}
+        </p>
 
         <fieldset className={styles.fieldset}>
           <legend className={styles.legend}>Customer Information</legend>
@@ -143,7 +152,11 @@ export function CheckoutForm() {
           <div className={styles.grid}>
             <label className={styles.field}>
               Address
-              <input name="shippingLine1" autoComplete="address-line1" required />
+              <input
+                name="shippingLine1"
+                autoComplete="address-line1"
+                required
+              />
             </label>
             <label className={styles.field}>
               Apartment or suite (optional)
@@ -151,19 +164,38 @@ export function CheckoutForm() {
             </label>
             <label className={styles.field}>
               City
-              <input name="shippingCity" autoComplete="address-level2" required />
+              <input
+                name="shippingCity"
+                autoComplete="address-level2"
+                required
+              />
             </label>
             <label className={styles.field}>
               Province
-              <input name="shippingProvince" autoComplete="address-level1" required />
+              <input
+                name="shippingProvince"
+                autoComplete="address-level1"
+                required
+              />
             </label>
             <label className={styles.field}>
               Postal code
-              <input name="shippingPostalCode" autoComplete="postal-code" required inputMode="numeric" pattern="\d{4}" />
+              <input
+                name="shippingPostalCode"
+                autoComplete="postal-code"
+                required
+                inputMode="numeric"
+                pattern="\d{4}"
+              />
             </label>
             <label className={styles.field}>
               Country
-              <input name="shippingCountry" autoComplete="country-name" defaultValue="South Africa" required />
+              <input
+                name="shippingCountry"
+                autoComplete="country-name"
+                defaultValue="South Africa"
+                required
+              />
             </label>
           </div>
         </fieldset>
@@ -202,39 +234,57 @@ export function CheckoutForm() {
             <div className={styles.grid}>
               <label className={styles.field}>
                 Address
-                <input name="billingLine1" autoComplete="billing address-line1" required />
+                <input
+                  name="billingLine1"
+                  autoComplete="billing address-line1"
+                  required
+                />
               </label>
               <label className={styles.field}>
                 Apartment or suite (optional)
-                <input name="billingLine2" autoComplete="billing address-line2" />
+                <input
+                  name="billingLine2"
+                  autoComplete="billing address-line2"
+                />
               </label>
               <label className={styles.field}>
                 City
-                <input name="billingCity" autoComplete="billing address-level2" required />
+                <input
+                  name="billingCity"
+                  autoComplete="billing address-level2"
+                  required
+                />
               </label>
               <label className={styles.field}>
                 Province
-                <input name="billingProvince" autoComplete="billing address-level1" required />
+                <input
+                  name="billingProvince"
+                  autoComplete="billing address-level1"
+                  required
+                />
               </label>
               <label className={styles.field}>
                 Postal code
-                <input name="billingPostalCode" autoComplete="billing postal-code" required inputMode="numeric" pattern="\d{4}" />
+                <input
+                  name="billingPostalCode"
+                  autoComplete="billing postal-code"
+                  required
+                  inputMode="numeric"
+                  pattern="\d{4}"
+                />
               </label>
               <label className={styles.field}>
                 Country
-                <input name="billingCountry" autoComplete="billing country-name" defaultValue="South Africa" required />
+                <input
+                  name="billingCountry"
+                  autoComplete="billing country-name"
+                  defaultValue="South Africa"
+                  required
+                />
               </label>
             </div>
           </fieldset>
         ) : null}
-
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>Payment</legend>
-          <p className={styles.paymentNote}>
-            Payment gateway connection is pending. This order will be held
-            awaiting payment setup. No payment information is collected.
-          </p>
-        </fieldset>
 
         {error ? (
           <p className={styles.error} role="alert">
@@ -247,7 +297,7 @@ export function CheckoutForm() {
           className={styles.submit}
           disabled={status === "submitting"}
         >
-          {status === "submitting" ? "Placing order…" : "Place Order"}
+          {status === "submitting" ? "Saving details…" : "Next"}
         </button>
       </div>
 
@@ -277,9 +327,9 @@ export function CheckoutForm() {
         </div>
 
         <div className={styles.trust}>
-          <p>✓ Secure Checkout</p>
-          <p>✓ Tracked Delivery</p>
-          <p>✓ Size Exchanges Available</p>
+          <p>✓ Review before paying</p>
+          <p>✓ Secure Paystack checkout</p>
+          <p>✓ Tracked delivery</p>
         </div>
       </div>
     </form>

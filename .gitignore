@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/.email-previews
+/.resend-template-export
 
 # next.js
 /.next/

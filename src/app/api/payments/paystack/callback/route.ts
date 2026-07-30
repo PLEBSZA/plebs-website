@@ -9,13 +9,15 @@ export async function GET(request: Request) {
     redirect("/order-confirmation/?error=missing_reference");
   }
 
-  const result = await verifyPaystackPayment(reference);
-
-  if (result.ok) {
-    redirect(
-      `/order-confirmation/?order=${encodeURIComponent(result.orderNumber)}&paid=true`,
-    );
+  let destination = "/order-confirmation/?error=payment_failed";
+  try {
+    const result = await verifyPaystackPayment(reference);
+    if (result.ok) {
+      destination = `/order-confirmation/?order=${encodeURIComponent(result.orderNumber)}&paid=true`;
+    }
+  } catch {
+    // Keep the generic failure destination. Payment details stay server-side.
   }
 
-  redirect(`/order-confirmation/?error=payment_failed`);
+  redirect(destination);
 }

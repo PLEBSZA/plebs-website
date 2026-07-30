@@ -17,13 +17,23 @@ export default async function OrderConfirmationPage({
 }) {
   const params = await searchParams;
   const orderNumber = typeof params.order === "string" ? params.order : null;
+  const paid = params.paid === "true";
+  const paymentFailed = params.error === "payment_failed";
 
   return (
     <section className="section">
       <div className="container container--reading">
-        <p className="editorial-page__kicker">Order confirmed</p>
-        <h1>Thank You.</h1>
-        <p>Your PLEBS order has been received.</p>
+        <p className="editorial-page__kicker">
+          {paymentFailed ? "Payment unsuccessful" : "Order confirmed"}
+        </p>
+        <h1>{paymentFailed ? "Payment Was Not Completed." : "Thank You."}</h1>
+        <p>
+          {paymentFailed
+            ? "Paystack could not confirm this payment. No order will be fulfilled until payment succeeds."
+            : paid
+              ? "Your payment was successful and your PLEBS order is confirmed."
+              : "Your PLEBS order has been received and is awaiting payment."}
+        </p>
 
         {orderNumber ? (
           <dl className="editorial-page__specs">
@@ -42,8 +52,9 @@ export default async function OrderConfirmationPage({
             <div>
               <dt>Payment</dt>
               <dd>
-                Payment gateway is pending. You will receive a payment link
-                when the checkout integration is connected.
+                {paid
+                  ? "Paid securely through Paystack"
+                  : "Awaiting payment"}
               </dd>
             </div>
           </dl>

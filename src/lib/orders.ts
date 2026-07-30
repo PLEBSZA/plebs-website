@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
   FulfilmentStatus,
   OrderStatus,
@@ -12,6 +13,27 @@ import {
   validatePurchaseQuantity,
 } from "@/lib/commerce/inventory-reservation";
 import { getShippingMethod } from "@/lib/shipping";
+
+type CheckoutPaymentMetadata = {
+  checkoutToken?: string;
+};
+
+function createCheckoutToken() {
+  return randomBytes(24).toString("hex");
+}
+
+function tokensMatch(expected: string | undefined, provided: string | undefined) {
+  if (!expected || !provided) return false;
+  const left = Buffer.from(expected);
+  const right = Buffer.from(provided);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+function readCheckoutToken(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return undefined;
+  return (metadata as CheckoutPaymentMetadata).checkoutToken;
+}
 
 export type OrderAddress = {
   line1: string;
@@ -151,6 +173,7 @@ export async function createOrder(input: CreateOrderInput) {
       select: { productId: true },
     });
 
+    const checkoutToken = createCheckoutToken();
     const order = await db.order.create({
       data: {
         number: createOrderNumber(),
@@ -168,8 +191,7 @@ export async function createOrder(input: CreateOrderInput) {
         shippingTotal: shipping.price,
         total,
         shippingMethod: shipping.id,
-        internalNotes:
-          "Payment gateway connection is pending. This order is held awaiting payment setup.",
+        internalNotes: "Awaiting payment confirmation.",
         items: {
           create: [
             {
@@ -192,6 +214,7 @@ export async function createOrder(input: CreateOrderInput) {
               status: PaymentStatus.PENDING,
               amount: total,
               currency: "ZAR",
+              metadata: { checkoutToken },
             },
           ],
         },
@@ -226,6 +249,7 @@ export async function createOrder(input: CreateOrderInput) {
 
     return {
       ok: true as const,
+      checkoutToken,
       order: {
         id: order.id,
         number: order.number,
@@ -249,8 +273,7 @@ export async function createOrder(input: CreateOrderInput) {
         total,
         currency: "ZAR",
         estimatedDispatch: "Dispatch timing to be confirmed",
-        paymentNote:
-          "Payment gateway connection is pending. This order is held awaiting payment setup.",
+        paymentNote: "Awaiting payment confirmation.",
       },
     };
   } catch (error) {
@@ -263,14 +286,40 @@ export async function createOrder(input: CreateOrderInput) {
   }
 }
 
-export async function getOrder(id: string) {
-  const order = await db.order.findUnique({
-    where: { id },
-    include: { items: true },
-  });
-  if (!order) return null;
-
+function mapOrder(
+  order: {
+    id: string;
+    number: string;
+    createdAt: Date;
+    status: OrderStatus;
+    paymentStatus: PaymentStatus;
+    customerEmail: string;
+    customerName: string;
+    customerPhone: string | null;
+    shippingAddress: unknown;
+    billingAddress: unknown;
+    shippingMethod: string | null;
+    shippingTotal: { toString(): string } | number;
+    subtotal: { toString(): string } | number;
+    total: { toString(): string } | number;
+    currency: string;
+    items: Array<{
+      productName: string;
+      colour: string;
+      size: string;
+      quantity: number;
+      unitPrice: { toString(): string } | number;
+      sku: string;
+    }>;
+  },
+  checkoutToken?: string,
+) {
   const item = order.items[0];
+  const shippingAddress = order.shippingAddress as OrderAddress;
+  const billingAddress = order.billingAddress as OrderAddress;
+  const billingSameAsShipping =
+    JSON.stringify(shippingAddress) === JSON.stringify(billingAddress);
+
   return {
     id: order.id,
     number: order.number,
@@ -287,9 +336,9 @@ export async function getOrder(id: string) {
       lastName: order.customerName.split(" ").slice(1).join(" ") || "",
       phone: order.customerPhone ?? "",
     },
-    shippingAddress: order.shippingAddress as OrderAddress,
-    billingAddress: order.billingAddress as OrderAddress,
-    billingSameAsShipping: true,
+    shippingAddress,
+    billingAddress,
+    billingSameAsShipping,
     shippingMethodId: order.shippingMethod ?? "standard",
     shippingPrice: Number(order.shippingTotal),
     line: {
@@ -304,14 +353,63 @@ export async function getOrder(id: string) {
     total: Number(order.total),
     currency: order.currency,
     estimatedDispatch: "Dispatch timing to be confirmed",
-    paymentNote:
-      "Payment gateway connection is pending. This order is held awaiting payment setup.",
+    paymentNote: "Awaiting payment confirmation.",
+    checkoutToken,
   };
+}
+
+export async function getOrder(id: string) {
+  const order = await db.order.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+  if (!order) return null;
+  return mapOrder(order);
+}
+
+export async function getCheckoutOrder(input: {
+  orderNumber: string;
+  checkoutToken: string;
+}) {
+  const order = await db.order.findUnique({
+    where: { number: input.orderNumber },
+    include: { items: true, payments: true },
+  });
+  if (!order) return null;
+
+  const token = order.payments
+    .map((payment) => readCheckoutToken(payment.metadata))
+    .find(Boolean);
+
+  if (!tokensMatch(token, input.checkoutToken)) return null;
+
+  return mapOrder(order, token);
+}
+
+export async function assertCheckoutAccess(input: {
+  orderId: string;
+  checkoutToken: string;
+}) {
+  const order = await db.order.findUnique({
+    where: { id: input.orderId },
+    include: { payments: true },
+  });
+  if (!order) return null;
+
+  const token = order.payments
+    .map((payment) => readCheckoutToken(payment.metadata))
+    .find(Boolean);
+
+  if (!tokensMatch(token, input.checkoutToken)) return null;
+  return order;
 }
 
 export async function cancelOrder(id: string) {
   const order = await db.order.findUnique({ where: { id } });
   if (!order || order.status === OrderStatus.CANCELLED) return null;
+  if (order.paymentStatus === PaymentStatus.PAID) {
+    throw new Error("Paid orders cannot be cancelled from checkout.");
+  }
 
   await releaseOrderReservation(id);
   const updated = await db.order.update({
@@ -325,6 +423,15 @@ export async function cancelOrder(id: string) {
   });
 
   return getOrder(updated.id);
+}
+
+export async function cancelCheckoutOrder(input: {
+  orderId: string;
+  checkoutToken: string;
+}) {
+  const order = await assertCheckoutAccess(input);
+  if (!order) return null;
+  return cancelOrder(order.id);
 }
 
 export async function listOrdersForAdmin(input?: { take?: number }) {

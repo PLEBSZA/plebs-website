@@ -1,5 +1,6 @@
 import { createPageMetadata } from "@/lib/metadata";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
+import { getPaystackMode } from "@/lib/commerce/paystack";
 
 export const metadata = createPageMetadata({
   title: "Checkout",
@@ -9,10 +10,12 @@ export const metadata = createPageMetadata({
 });
 
 export default function CheckoutPage() {
+  const paymentMode = getPaystackMode();
+
   return (
     <section className="section">
       <div className="container">
-        <CheckoutForm />
+        <CheckoutForm paymentMode={paymentMode} />
       </div>
     </section>
   );

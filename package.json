@@ -9,6 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "media:prepare": "node scripts/prepare-media.mjs",
+    "email:render": "tsx scripts/render-email-previews.tsx",
+    "email:export": "tsx scripts/sync-resend-templates.tsx --export",
+    "email:sync": "tsx scripts/sync-resend-templates.tsx",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
@@ -27,6 +30,8 @@
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-email": "^6.9.1",
+    "resend": "^6.18.1",
     "server-only": "^0.0.1",
     "zod": "^4.4.3"
   },

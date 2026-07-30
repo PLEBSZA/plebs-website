@@ -60,7 +60,9 @@ export default function ContactPage() {
           <dl className="editorial-page__specs">
             <div>
               <dt>Support email</dt>
-              <dd>To be confirmed</dd>
+              <dd>
+                <a href="mailto:hello@plebs.co.za">hello@plebs.co.za</a>
+              </dd>
             </div>
             <div>
               <dt>WhatsApp</dt>

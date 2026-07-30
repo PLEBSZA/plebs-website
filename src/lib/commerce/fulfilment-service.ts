@@ -11,6 +11,8 @@ import {
   releaseOrderReservation,
 } from "@/lib/commerce/inventory-reservation";
 import { db } from "@/lib/db";
+import { sendFulfilmentDispatchedEmail } from "@/lib/email/fulfilment-emails";
+import { sendOrderPaidEmails } from "@/lib/email/order-emails";
 
 async function upsertFulfilment(
   orderId: string,
@@ -55,7 +57,7 @@ export async function markOrderPaid(input: {
   amount?: number;
   actorId?: string;
 }) {
-  const order = await db.$transaction(async (tx) => {
+  const { order, newlyPaid } = await db.$transaction(async (tx) => {
     const current = await tx.order.findUniqueOrThrow({
       where: { id: input.orderId },
       include: { payments: true },
@@ -66,7 +68,7 @@ export async function markOrderPaid(input: {
     }
 
     if (current.paymentStatus === PaymentStatus.PAID) {
-      return current;
+      return { order: current, newlyPaid: false };
     }
 
     if (input.providerEventId) {
@@ -74,7 +76,7 @@ export async function markOrderPaid(input: {
         where: { providerEventId: input.providerEventId },
       });
       if (existingEvent) {
-        return current;
+        return { order: current, newlyPaid: false };
       }
     }
 
@@ -109,7 +111,7 @@ export async function markOrderPaid(input: {
       });
     }
 
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id: current.id },
       data: {
         paymentStatus: PaymentStatus.PAID,
@@ -117,31 +119,48 @@ export async function markOrderPaid(input: {
           current.fulfilmentStatus === FulfilmentStatus.UNFULFILLED
             ? FulfilmentStatus.PROCESSING
             : current.fulfilmentStatus,
-        internalNotes: current.internalNotes?.includes("Payment gateway")
+        internalNotes: current.internalNotes?.includes(
+          "Awaiting payment confirmation",
+        )
           ? null
           : current.internalNotes,
       },
     });
+
+    return { order: updated, newlyPaid: true };
   });
 
-  const activeReservations = await db.inventoryReservation.count({
-    where: { orderId: order.id, status: "ACTIVE" },
-  });
-  if (activeReservations > 0) {
-    await convertOrderReservation(order.id);
+  if (newlyPaid) {
+    const activeReservations = await db.inventoryReservation.count({
+      where: { orderId: order.id, status: "ACTIVE" },
+    });
+    if (activeReservations > 0) {
+      await convertOrderReservation(order.id);
+    }
+
+    await recordAuditEvent({
+      actorId: input.actorId,
+      action: "order.paid",
+      entityType: "order",
+      entityId: order.id,
+      afterState: {
+        paymentStatus: order.paymentStatus,
+        provider: input.provider,
+        providerReference: input.providerReference ?? null,
+      },
+    });
   }
 
-  await recordAuditEvent({
-    actorId: input.actorId,
-    action: "order.paid",
-    entityType: "order",
-    entityId: order.id,
-    afterState: {
-      paymentStatus: order.paymentStatus,
-      provider: input.provider,
-      providerReference: input.providerReference ?? null,
-    },
-  });
+  // Safe on callback + webhook retries: payment metadata + Resend
+  // idempotency keys prevent duplicate customer/owner emails.
+  try {
+    await sendOrderPaidEmails(order.id);
+  } catch (error) {
+    console.error(
+      "Order was paid, but its confirmation email could not be sent:",
+      error instanceof Error ? error.message : "Unknown email error",
+    );
+  }
 
   return order;
 }
@@ -231,6 +250,15 @@ export async function fulfilOrder(input: {
       trackingNumber: fulfilment.trackingNumber,
     },
   });
+
+  try {
+    await sendFulfilmentDispatchedEmail(fulfilment.id);
+  } catch (error) {
+    console.error(
+      "Order was fulfilled, but its dispatch email could not be sent:",
+      error instanceof Error ? error.message : "Unknown email error",
+    );
+  }
 
   return fulfilment;
 }

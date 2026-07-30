@@ -11,6 +11,12 @@ export function isPaystackConfigured() {
   return Boolean(process.env.PAYSTACK_SECRET_KEY?.trim());
 }
 
+export function getPaystackMode() {
+  const key = process.env.PAYSTACK_SECRET_KEY?.trim();
+  if (!key) return "unconfigured" as const;
+  return key.startsWith("sk_test_") ? ("test" as const) : ("live" as const);
+}
+
 export function getPaystackPublicKey() {
   return process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY?.trim() || null;
 }
@@ -50,7 +56,10 @@ async function paystackRequest<T>(
   return payload.data;
 }
 
-export async function initializePaystackPayment(orderId: string) {
+export async function initializePaystackPayment(
+  orderId: string,
+  requestOrigin?: string,
+) {
   if (!isPaystackConfigured()) {
     return {
       ok: false as const,
@@ -81,10 +90,14 @@ export async function initializePaystackPayment(orderId: string) {
     };
   }
 
-  const amountKobo = Math.round(Number(order.total) * 100);
+  const amountSubunit = Math.round(Number(order.total) * 100);
+  const callbackBaseUrl =
+    process.env.NODE_ENV === "development" && requestOrigin
+      ? requestOrigin
+      : getCanonicalSiteUrl();
   const callbackUrl = new URL(
     "/api/payments/paystack/callback/",
-    getCanonicalSiteUrl(),
+    callbackBaseUrl,
   ).toString();
 
   const data = await paystackRequest<{
@@ -95,7 +108,7 @@ export async function initializePaystackPayment(orderId: string) {
     method: "POST",
     body: JSON.stringify({
       email: order.customerEmail,
-      amount: amountKobo,
+      amount: amountSubunit,
       currency: order.currency,
       reference: `${order.number}-${Date.now().toString(36)}`,
       callback_url: callbackUrl,
@@ -117,6 +130,11 @@ export async function initializePaystackPayment(orderId: string) {
     order.payments.find((payment) => payment.status === PaymentStatus.PENDING) ??
     order.payments[0];
 
+  const existingMetadata =
+    pendingPayment?.metadata && typeof pendingPayment.metadata === "object"
+      ? (pendingPayment.metadata as Record<string, unknown>)
+      : {};
+
   if (pendingPayment) {
     await db.payment.update({
       where: { id: pendingPayment.id },
@@ -125,6 +143,7 @@ export async function initializePaystackPayment(orderId: string) {
         providerReference: data.reference,
         status: PaymentStatus.PENDING,
         metadata: {
+          ...existingMetadata,
           access_code: data.access_code,
           authorization_url: data.authorization_url,
         },
@@ -183,40 +202,59 @@ export async function verifyPaystackPayment(reference: string) {
     include: { order: true },
   });
 
-  const orderId =
-    payment?.orderId ??
-    data.metadata?.order_id ??
-    (
-      await db.order.findFirst({
-        where: { number: data.metadata?.order_number },
-        select: { id: true },
-      })
-    )?.id;
+  const order =
+    payment?.order ??
+    (data.metadata?.order_id
+      ? await db.order.findUnique({ where: { id: data.metadata.order_id } })
+      : data.metadata?.order_number
+        ? await db.order.findFirst({
+            where: { number: data.metadata.order_number },
+          })
+        : null);
 
-  if (!orderId) {
+  if (!order) {
     return {
       ok: false as const,
       message: "Unable to match Paystack payment to an order.",
     };
   }
 
+  const expectedAmount = Math.round(Number(order.total) * 100);
+  if (data.amount !== expectedAmount || data.currency !== order.currency) {
+    return {
+      ok: false as const,
+      message: "Paystack payment amount or currency does not match the order.",
+    };
+  }
+
+  if (
+    data.metadata?.order_id &&
+    payment?.orderId &&
+    data.metadata.order_id !== payment.orderId
+  ) {
+    return {
+      ok: false as const,
+      message: "Paystack payment metadata does not match the order.",
+    };
+  }
+
   await markOrderPaid({
-    orderId,
+    orderId: order.id,
     provider: "paystack",
     providerReference: data.reference,
     providerEventId: `paystack-verify-${data.id}`,
     amount: data.amount / 100,
   });
 
-  const order = await db.order.findUniqueOrThrow({
-    where: { id: orderId },
+  const paidOrder = await db.order.findUniqueOrThrow({
+    where: { id: order.id },
     select: { id: true, number: true },
   });
 
   return {
     ok: true as const,
-    orderId: order.id,
-    orderNumber: order.number,
+    orderId: paidOrder.id,
+    orderNumber: paidOrder.number,
   };
 }
 

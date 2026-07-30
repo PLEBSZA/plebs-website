@@ -51,8 +51,23 @@
   background: var(--color-forest-deep);
 }
 
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .help,
-.note {
+.note,
+.error {
   margin: 0;
   font-size: var(--text-sm);
 }
@@ -66,4 +81,11 @@
   border-left: 3px solid var(--color-moss);
   background: rgba(111, 128, 97, 0.12);
   color: var(--color-forest-deep);
+}
+
+.error {
+  padding: 0.75rem;
+  border-left: 3px solid var(--color-error);
+  background: rgba(150, 42, 42, 0.08);
+  color: var(--color-error);
 }

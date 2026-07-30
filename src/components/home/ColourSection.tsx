@@ -22,7 +22,7 @@ export function ColourSection() {
           <section className={styles.colourStory}>
             <h3>Natural Earth Tones</h3>
             <div className={`${styles.swatch} ${styles.earth}`}>
-              <span>Earth tone direction</span>
+              <span>Earth tone direction (Coming Soon)</span>
             </div>
           </section>
         </div>

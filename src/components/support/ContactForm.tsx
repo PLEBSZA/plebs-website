@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import styles from "./ContactForm.module.css";
 
 const enquiryTypes = [
@@ -13,20 +13,71 @@ const enquiryTypes = [
 ] as const;
 
 export function ContactForm() {
-  const [status, setStatus] = useState<"idle" | "submitted">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "submitted" | "error"
+  >("idle");
+  const [message, setMessage] = useState("");
+  const submissionIdRef = useRef<string | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus("submitted");
+    const form = event.currentTarget;
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    setStatus("submitting");
+    setMessage("");
+
+    const data = Object.fromEntries(new FormData(form));
+    submissionIdRef.current ??= crypto.randomUUID();
+
+    try {
+      const response = await fetch("/api/contact/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          submissionId: submissionIdRef.current,
+        }),
+      });
+      const result = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        setStatus("error");
+        setMessage(result.message ?? "Your message could not be sent.");
+        return;
+      }
+
+      window.dispatchEvent(
+        new CustomEvent("plebs:commerce-event", {
+          detail: { event: "contact_submit" },
+        }),
+      );
+      form.reset();
+      submissionIdRef.current = null;
+      setStatus("submitted");
+      setMessage("Thanks — your message has been sent to PLEBS.");
+    } catch {
+      setStatus("error");
+      setMessage("Your message could not be sent. Please try again.");
+    }
   }
 
   return (
-    <form
-      className={styles.form}
-      onSubmit={handleSubmit}
-      noValidate
-      data-event="contact_submit"
-    >
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <div className={styles.honeypot} aria-hidden="true">
+        <label htmlFor="contact-website">Website</label>
+        <input
+          id="contact-website"
+          name="website"
+          type="text"
+          autoComplete="off"
+          tabIndex={-1}
+        />
+      </div>
+
       <div className={styles.field}>
         <label htmlFor="contact-name">Name</label>
         <input id="contact-name" name="name" type="text" autoComplete="name" required />
@@ -67,20 +118,24 @@ export function ContactForm() {
         <textarea id="contact-message" name="message" rows={6} required />
       </div>
 
-      <button type="submit" className={styles.button}>
-        Send Message
+      <button
+        type="submit"
+        className={styles.button}
+        disabled={status === "submitting"}
+      >
+        {status === "submitting" ? "Sending…" : "Send Message"}
       </button>
 
-      {status === "submitted" ? (
-        <p className={styles.note} role="status">
-          Thanks — the contact form is a prototype and is not connected to email
-          delivery yet. Please use the published support address once it is
-          confirmed.
+      {status === "submitted" || status === "error" ? (
+        <p
+          className={status === "error" ? styles.error : styles.note}
+          role={status === "error" ? "alert" : "status"}
+        >
+          {message}
         </p>
       ) : (
         <p className={styles.help}>
-          Form submission remains a placeholder until the support inbox and
-          delivery service are connected.
+          Your message will be delivered to hello@plebs.co.za.
         </p>
       )}
     </form>

@@ -12,9 +12,10 @@ const productDir = path.join(
   "cotton-corduroy-dungarees",
 );
 const socialDir = path.join(publicImagesDir, "social");
+const emailDir = path.join(publicImagesDir, "email");
 
 await Promise.all(
-  [brandDir, productDir, socialDir].map((directory) =>
+  [brandDir, productDir, socialDir, emailDir].map((directory) =>
     mkdir(directory, { recursive: true }),
   ),
 );
@@ -83,6 +84,23 @@ await Promise.all([
 
 const detailsSourceDir = path.join(sourceDir, "details");
 const lifestyleSourceDir = path.join(sourceDir, "lifestyle");
+
+await Promise.all([
+  sharp(Buffer.from(fullLogo))
+    .resize({ width: 360, withoutEnlargement: true })
+    .png({ compressionLevel: 9 })
+    .toFile(path.join(emailDir, "plebs-logo-email.png")),
+  sharp(path.join(detailsSourceDir, "texture_2.jpg"))
+    .rotate()
+    .resize({ width: 1200, withoutEnlargement: true })
+    .jpeg({ quality: 86, mozjpeg: true })
+    .toFile(path.join(emailDir, "plebs-corduroy-detail-email.jpg")),
+  sharp(campaignSource)
+    .extract({ left: 0, top: 300, width: 1587, height: 1710 })
+    .resize({ width: 900, withoutEnlargement: true })
+    .jpeg({ quality: 86, mozjpeg: true })
+    .toFile(path.join(emailDir, "plebs-dungarees-email.jpg")),
+]);
 
 async function writePortraitWebp(inputPath, outputName, { width = 1200, height = 1500 } = {}) {
   const metadata = await sharp(inputPath).metadata();
