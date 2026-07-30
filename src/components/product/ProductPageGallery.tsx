@@ -33,7 +33,7 @@ export function ProductPageGallery() {
           className={styles.image}
           style={{ objectPosition: activeImage.objectPosition }}
           sizes="(max-width: 899px) calc(100vw - 2rem), 58vw"
-          loading={activeIndex === 0 ? "eager" : "lazy"}
+          priority={activeIndex === 0}
         />
         <div className={styles.controls}>
           <button type="button" onClick={showPrevious} aria-label="Previous image">

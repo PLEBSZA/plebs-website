@@ -157,7 +157,7 @@ export function DetailSlideshow({
                 className={styles.image}
                 style={{ objectPosition: image.objectPosition }}
                 sizes="(max-width: 899px) calc(100vw - 2rem), 36vw"
-                loading={index === 0 && activeIndex === 0 ? "eager" : "lazy"}
+                loading="lazy"
               />
             </div>
           );
