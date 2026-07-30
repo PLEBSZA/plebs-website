@@ -5,6 +5,7 @@ import {
   FulfilmentStatus,
   OrderStatus,
   PaymentStatus,
+  ReturnStatus,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import {
@@ -444,12 +445,244 @@ export async function cancelCheckoutOrder(input: {
   return cancelOrder(order.id);
 }
 
-export async function listOrdersForAdmin(input?: { take?: number }) {
+export type AdminOrderView = "open" | "completed" | "returns" | "cancelled";
+
+const TERMINAL_RETURN_STATUSES: ReturnStatus[] = [
+  ReturnStatus.CLOSED,
+  ReturnStatus.REJECTED,
+  ReturnStatus.REFUNDED,
+];
+
+function buildOrderSearchWhere(search: string) {
+  const q = search.trim();
+  if (!q) return undefined;
+  return {
+    OR: [
+      { number: { contains: q, mode: "insensitive" as const } },
+      { customerName: { contains: q, mode: "insensitive" as const } },
+      { customerEmail: { contains: q, mode: "insensitive" as const } },
+      {
+        fulfilments: {
+          some: {
+            trackingNumber: { contains: q, mode: "insensitive" as const },
+          },
+        },
+      },
+      {
+        returnRequests: {
+          some: {
+            reference: { contains: q, mode: "insensitive" as const },
+          },
+        },
+      },
+    ],
+  };
+}
+
+export async function getAdminOrderViewCounts(search?: string) {
+  const searchWhere = buildOrderSearchWhere(search ?? "");
+  const [open, completed, returnsOpen, cancelled] = await Promise.all([
+    db.order.count({
+      where: {
+        status: OrderStatus.OPEN,
+        AND: searchWhere ? [searchWhere] : undefined,
+      },
+    }),
+    db.order.count({
+      where: {
+        status: OrderStatus.COMPLETED,
+        AND: searchWhere ? [searchWhere] : undefined,
+      },
+    }),
+    db.returnRequest.count({
+      where: {
+        status: { notIn: TERMINAL_RETURN_STATUSES },
+        AND: search
+          ? [
+              {
+                OR: [
+                  {
+                    reference: {
+                      contains: search.trim(),
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    order: {
+                      OR: [
+                        {
+                          number: {
+                            contains: search.trim(),
+                            mode: "insensitive",
+                          },
+                        },
+                        {
+                          customerName: {
+                            contains: search.trim(),
+                            mode: "insensitive",
+                          },
+                        },
+                        {
+                          customerEmail: {
+                            contains: search.trim(),
+                            mode: "insensitive",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ]
+          : undefined,
+      },
+    }),
+    db.order.count({
+      where: {
+        status: OrderStatus.CANCELLED,
+        AND: searchWhere ? [searchWhere] : undefined,
+      },
+    }),
+  ]);
+
+  return { open, completed, returns: returnsOpen, cancelled };
+}
+
+export async function listOrdersForAdmin(input?: {
+  take?: number;
+  view?: AdminOrderView;
+  search?: string;
+  includeTerminalReturns?: boolean;
+  cursor?: string;
+}) {
+  const take = input?.take ?? 50;
+  const view = input?.view ?? "open";
+  const searchWhere = buildOrderSearchWhere(input?.search ?? "");
+
+  if (view === "returns") {
+    return {
+      kind: "returns" as const,
+      rows: await db.returnRequest.findMany({
+        where: {
+          ...(input?.includeTerminalReturns
+            ? {}
+            : { status: { notIn: TERMINAL_RETURN_STATUSES } }),
+          ...(input?.search?.trim()
+            ? {
+                OR: [
+                  {
+                    reference: {
+                      contains: input.search.trim(),
+                      mode: "insensitive",
+                    },
+                  },
+                  {
+                    order: {
+                      OR: [
+                        {
+                          number: {
+                            contains: input.search.trim(),
+                            mode: "insensitive",
+                          },
+                        },
+                        {
+                          customerName: {
+                            contains: input.search.trim(),
+                            mode: "insensitive",
+                          },
+                        },
+                        {
+                          customerEmail: {
+                            contains: input.search.trim(),
+                            mode: "insensitive",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              }
+            : {}),
+        },
+        include: {
+          order: {
+            select: {
+              id: true,
+              number: true,
+              customerName: true,
+              customerEmail: true,
+            },
+          },
+          exchange: true,
+        },
+        orderBy: { requestedAt: "asc" },
+        take,
+        ...(input?.cursor
+          ? { cursor: { id: input.cursor }, skip: 1 }
+          : {}),
+      }),
+    };
+  }
+
+  const statusFilter =
+    view === "completed"
+      ? OrderStatus.COMPLETED
+      : view === "cancelled"
+        ? OrderStatus.CANCELLED
+        : OrderStatus.OPEN;
+
+  const orders = await db.order.findMany({
+    where: {
+      status: statusFilter,
+      AND: searchWhere ? [searchWhere] : undefined,
+    },
+    include: {
+      items: true,
+      fulfilments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+      returnRequests: {
+        select: { id: true, reference: true, status: true },
+      },
+    },
+    orderBy:
+      view === "open"
+        ? { createdAt: "asc" }
+        : { createdAt: "desc" },
+    take: view === "open" ? Math.max(take * 3, 150) : take,
+    ...(input?.cursor && view !== "open"
+      ? { cursor: { id: input.cursor }, skip: 1 }
+      : {}),
+  });
+
+  if (view === "open") {
+    const { getOpenOrderSortPriority } = await import(
+      "@/lib/commerce/order-next-action"
+    );
+    orders.sort((a, b) => {
+      const pa = getOpenOrderSortPriority(a);
+      const pb = getOpenOrderSortPriority(b);
+      if (pa !== pb) return pa - pb;
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+    return {
+      kind: "orders" as const,
+      rows: orders.slice(0, take),
+    };
+  }
+
+  return { kind: "orders" as const, rows: orders };
+}
+
+/** @deprecated Prefer listOrdersForAdmin({ view: "open" }) */
+export async function listRecentOrdersForAdmin(take = 20) {
   return db.order.findMany({
     include: {
       items: true,
+      returnRequests: { select: { status: true } },
     },
     orderBy: { createdAt: "desc" },
-    take: input?.take ?? 50,
+    take,
   });
 }

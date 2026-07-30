@@ -40,7 +40,7 @@ export default async function AdminReturnDetailPage({
           </Link>
         </p>
         <p style={{ marginTop: "0.25rem" }}>
-          <Link href="/admin/returns">← All returns</Link>
+          <Link href="/admin/orders?view=returns">← All returns</Link>
         </p>
       </header>
 

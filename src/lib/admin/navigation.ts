@@ -26,7 +26,7 @@ export const adminNavItems = [
     permission: "orders:read" as const,
   },
   {
-    href: "/admin/returns",
+    href: "/admin/orders?view=returns",
     label: "Returns",
     permission: "returns:manage" as const,
   },

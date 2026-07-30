@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireAdminSession } from "@/lib/admin/dal";
+import { requireAdminSession, adminCan } from "@/lib/admin/dal";
 import { getDashboardInventorySummary } from "@/lib/commerce/inventory-service";
 import { listProductsForAdmin } from "@/lib/commerce/catalogue-service";
-import { listOrdersForAdmin } from "@/lib/orders";
+import { getOrderNextAction } from "@/lib/commerce/order-next-action";
+import { listRecentOrdersForAdmin, getAdminOrderViewCounts } from "@/lib/orders";
 import { formatMoney } from "@/lib/money";
 import styles from "./admin-pages.module.css";
 
@@ -13,17 +14,25 @@ export const metadata: Metadata = {
 
 export default async function AdminOverviewPage() {
   await requireAdminSession();
-  const [inventory, products, orders] = await Promise.all([
+  const canManageReturns = await adminCan("returns:manage");
+  const [inventory, products, orders, counts] = await Promise.all([
     getDashboardInventorySummary(),
     listProductsForAdmin(),
-    listOrdersForAdmin({ take: 20 }),
+    listRecentOrdersForAdmin(50),
+    getAdminOrderViewCounts(),
   ]);
 
-  const actionableOrders = orders.filter(
-    (order) =>
-      order.paymentStatus === "PENDING" ||
-      order.fulfilmentStatus === "UNFULFILLED",
-  );
+  const actionableOrders = orders.filter((order) => {
+    const next = getOrderNextAction(order);
+    return (
+      next === "Awaiting payment" ||
+      next === "Ready to pack" ||
+      next === "Ready to dispatch" ||
+      next === "Confirm delivery" ||
+      next === "Complete order" ||
+      next === "Process return"
+    );
+  });
 
   return (
     <>
@@ -52,8 +61,15 @@ export default async function AdminOverviewPage() {
         <article className={styles.card}>
           <span>Orders requiring action</span>
           <strong>{actionableOrders.length}</strong>
-          <Link href="/admin/orders">Review orders</Link>
+          <Link href="/admin/orders?view=open">Review open orders</Link>
         </article>
+        {canManageReturns ? (
+          <article className={styles.card}>
+            <span>Returns to process</span>
+            <strong>{counts.returns}</strong>
+            <Link href="/admin/orders?view=returns">Open returns</Link>
+          </article>
+        ) : null}
       </section>
 
       <section className={styles.panel}>
