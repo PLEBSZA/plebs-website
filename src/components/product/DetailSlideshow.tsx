@@ -4,20 +4,35 @@ import Image from "next/image";
 import {
   useCallback,
   useEffect,
-  useEffectEvent,
   useId,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { ProductImage } from "@/lib/media";
 import styles from "./DetailSlideshow.module.css";
 
 const SLIDE_INTERVAL_MS = 4000;
+const FADE_MS = 550;
 
 type Props = {
   images: readonly ProductImage[];
   label?: string;
 };
+
+function subscribeReducedMotion(onChange: () => void) {
+  const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getReducedMotionServerSnapshot() {
+  return false;
+}
 
 export function DetailSlideshow({
   images,
@@ -25,53 +40,80 @@ export function DetailSlideshow({
 }: Props) {
   const labelId = useId();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [previousIndex, setPreviousIndex] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [inViewport, setInViewport] = useState(false);
   const regionRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot,
+  );
 
   const activeImage = images[activeIndex] ?? images[0];
-  const autoplay = !paused && !reducedMotion && images.length > 1;
+  const autoplay =
+    !paused && !reducedMotion && inViewport && images.length > 1;
 
-  const goTo = useCallback(
+  const navigateTo = useCallback(
     (index: number) => {
       if (images.length === 0) return;
       const next = ((index % images.length) + images.length) % images.length;
-      setActiveIndex(next);
+      setActiveIndex((current) => {
+        if (current !== next) {
+          setPreviousIndex(current);
+        }
+        return next;
+      });
     },
     [images.length],
   );
 
   const showPrevious = useCallback(() => {
-    goTo(activeIndex - 1);
-  }, [activeIndex, goTo]);
+    navigateTo(activeIndex - 1);
+  }, [activeIndex, navigateTo]);
 
   const showNext = useCallback(() => {
-    goTo(activeIndex + 1);
-  }, [activeIndex, goTo]);
-
-  const onPrefersReducedMotion = useEffectEvent((matches: boolean) => {
-    setReducedMotion(matches);
-  });
+    navigateTo(activeIndex + 1);
+  }, [activeIndex, navigateTo]);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    onPrefersReducedMotion(media.matches);
-    const listener = (event: MediaQueryListEvent) => {
-      onPrefersReducedMotion(event.matches);
-    };
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+    const node = regionRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInViewport(entry.isIntersecting),
+      { threshold: 0.25 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (previousIndex === null || reducedMotion) return;
+    const timer = window.setTimeout(() => setPreviousIndex(null), FADE_MS);
+    return () => window.clearTimeout(timer);
+  }, [previousIndex, activeIndex, reducedMotion]);
 
   useEffect(() => {
     if (!autoplay) return;
     const timer = window.setInterval(() => {
-      setActiveIndex((index) => (index + 1) % images.length);
+      setActiveIndex((index) => {
+        const next = (index + 1) % images.length;
+        setPreviousIndex(index);
+        return next;
+      });
     }, SLIDE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [autoplay, images.length]);
 
   if (!activeImage) return null;
+
+  const lookahead =
+    images.length > 1 ? (activeIndex + 1) % images.length : null;
+  const fadingFrom = reducedMotion ? null : previousIndex;
+
+  const mountedIndexes = new Set<number>([activeIndex]);
+  if (lookahead !== null) mountedIndexes.add(lookahead);
+  if (fadingFrom !== null) mountedIndexes.add(fadingFrom);
 
   return (
     <div
@@ -95,7 +137,9 @@ export function DetailSlideshow({
       </p>
 
       <div className={styles.frame}>
-        {images.map((image, index) => {
+        {[...mountedIndexes].map((index) => {
+          const image = images[index];
+          if (!image) return null;
           const isActive = index === activeIndex;
           return (
             <div
@@ -113,8 +157,7 @@ export function DetailSlideshow({
                 className={styles.image}
                 style={{ objectPosition: image.objectPosition }}
                 sizes="(max-width: 899px) calc(100vw - 2rem), 36vw"
-                priority={index === 0}
-                loading={index === 0 ? "eager" : "lazy"}
+                loading={index === 0 && activeIndex === 0 ? "eager" : "lazy"}
               />
             </div>
           );
@@ -160,7 +203,7 @@ export function DetailSlideshow({
             ]
               .filter(Boolean)
               .join(" ")}
-            onClick={() => goTo(index)}
+            onClick={() => navigateTo(index)}
           />
         ))}
       </div>
