@@ -11,10 +11,13 @@ import {
   ReturnStatus,
   ReturnDisposition,
 } from "@/lib/commerce/returns-service";
+import { sendReturnReceivedEmail } from "@/lib/email/returns-emails";
 
 export type ReturnActionState = {
   error?: string;
   ok?: boolean;
+  message?: string;
+  warning?: string;
 };
 
 const createReturnSchema = z.object({
@@ -203,4 +206,58 @@ export async function markExchangeDeliveredAction(
   revalidatePath("/admin/returns");
   revalidatePath("/admin/orders");
   return { ok: true };
+}
+
+export async function sendReturnReceivedEmailAction(
+  _prev: ReturnActionState,
+  formData: FormData,
+): Promise<ReturnActionState> {
+  const user = await requireAdminSession("returns:manage");
+  const returnId = String(formData.get("returnId") ?? "");
+  const confirmResend = String(formData.get("confirmResend") ?? "");
+
+  if (!returnId) return { error: "Missing return." };
+
+  const { db } = await import("@/lib/db");
+  const priorSends = await db.auditEvent.count({
+    where: {
+      entityType: "return_request",
+      entityId: returnId,
+      action: "return.received_email_sent",
+    },
+  });
+
+  if (priorSends > 0 && confirmResend !== "yes") {
+    return {
+      error: "Confirm the re-send before notifying the customer again.",
+    };
+  }
+
+  const result = await sendReturnReceivedEmail({
+    returnId,
+    actorId: user.id,
+  });
+
+  revalidatePath(`/admin/returns/${returnId}`);
+  revalidatePath("/admin/orders");
+
+  if (result.status === "sent") {
+    return {
+      ok: true,
+      message:
+        priorSends > 0
+          ? "Return-received email re-sent."
+          : "Return-received email sent.",
+    };
+  }
+  if (result.status === "not_configured") {
+    return {
+      warning:
+        "Email is not configured (RESEND_API_KEY / RESEND_FROM_EMAIL). Return state was not changed.",
+    };
+  }
+  if (result.status === "refused") {
+    return { error: result.reason };
+  }
+  return { error: result.message };
 }

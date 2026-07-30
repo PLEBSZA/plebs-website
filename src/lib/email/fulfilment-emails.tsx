@@ -127,3 +127,96 @@ export async function sendFulfilmentDispatchedEmail(input: {
     return { status: "failed", message };
   }
 }
+
+export async function sendDeliveryConfirmationEmail(input: {
+  orderId: string;
+  actorId?: string;
+}): Promise<FulfilmentEmailResult> {
+  const order = await db.order.findUnique({
+    where: { id: input.orderId },
+    include: {
+      fulfilments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+
+  if (!order) {
+    return { status: "refused", reason: "Order not found." };
+  }
+
+  const fulfilment = order.fulfilments[0];
+  if (!fulfilment?.deliveredAt) {
+    return {
+      status: "refused",
+      reason: "Mark the order delivered before sending a delivery email.",
+    };
+  }
+
+  const priorSends = await db.auditEvent.count({
+    where: {
+      entityType: "order",
+      entityId: order.id,
+      action: "order.delivery_email_sent",
+    },
+  });
+  const sendSequence = priorSends + 1;
+  const deliveredOn = new Intl.DateTimeFormat("en-ZA", {
+    dateStyle: "medium",
+  }).format(fulfilment.deliveredAt);
+  const idempotencyKey = `order-delivered/${order.id}/${sendSequence}/${fulfilment.deliveredAt.toISOString()}`;
+
+  const firstName = order.customerName.trim().split(/\s+/)[0] || "there";
+
+  try {
+    const result = await sendEmail({
+      to: order.customerEmail,
+      replyTo: getContactEmail(),
+      subject: `Your PLEBS order ${order.number} has arrived`,
+      idempotencyKey,
+      template: {
+        id: emailTemplateAliases.deliveryConfirmation,
+        variables: {
+          CUSTOMER_FIRST_NAME: firstName,
+          ORDER_NUMBER: order.number,
+          DELIVERED_ON: deliveredOn,
+          SUPPORT_URL: "https://www.plebs.co.za/contact/",
+        },
+      },
+    });
+
+    if (!result.sent) {
+      await recordAuditEvent({
+        actorId: input.actorId,
+        action: "order.delivery_email_sent_failed",
+        entityType: "order",
+        entityId: order.id,
+        afterState: { reason: result.reason, sendSequence },
+      });
+      return { status: "not_configured" };
+    }
+
+    await recordAuditEvent({
+      actorId: input.actorId,
+      action: "order.delivery_email_sent",
+      entityType: "order",
+      entityId: order.id,
+      afterState: {
+        sendSequence,
+        deliveredOn,
+        emailId: result.id,
+      },
+    });
+
+    return { status: "sent", emailId: result.id };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown email error";
+    await recordAuditEvent({
+      actorId: input.actorId,
+      action: "order.delivery_email_sent_failed",
+      entityType: "order",
+      entityId: order.id,
+      afterState: { message, sendSequence },
+    });
+    return { status: "failed", message };
+  }
+}

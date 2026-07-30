@@ -10,6 +10,7 @@ import {
   reopenOrderAction,
   updateTrackingAction,
   sendTrackingEmailAction,
+  sendDeliveryEmailAction,
   type FulfilmentActionState,
 } from "@/app/admin/actions/fulfilment";
 import {
@@ -80,6 +81,8 @@ export function OrderActionsPanel({
     sendTrackingEmailAction,
     initialFulfilment,
   );
+  const [deliveryEmailState, deliveryEmailAction, sendingDeliveryEmail] =
+    useActionState(sendDeliveryEmailAction, initialFulfilment);
   const [returnState, returnAction, returningPending] = useActionState(
     createReturnAction,
     initialReturn,
@@ -311,6 +314,54 @@ export function OrderActionsPanel({
               Delivered ✓
             </p>
           )}
+        </div>
+      )}
+
+      {!isCancelled && isDelivered && (
+        <div style={{ marginBottom: "var(--space-3)" }}>
+          <details>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+              Send delivery confirmation email
+            </summary>
+            <form action={deliveryEmailAction} style={{ marginTop: "0.5rem" }}>
+              <input type="hidden" name="orderId" value={orderId} />
+              <label
+                style={{
+                  display: "flex",
+                  gap: "0.5rem",
+                  alignItems: "center",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  name="confirmResend"
+                  value="yes"
+                />
+                Confirm send / re-send
+              </label>
+              <button type="submit" disabled={sendingDeliveryEmail}>
+                {sendingDeliveryEmail
+                  ? "Sending…"
+                  : "Send delivery email to customer"}
+              </button>
+            </form>
+            {deliveryEmailState.error && (
+              <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
+                {deliveryEmailState.error}
+              </p>
+            )}
+            {deliveryEmailState.warning && (
+              <p style={{ color: "#a15c00", margin: "0.25rem 0 0" }}>
+                {deliveryEmailState.warning}
+              </p>
+            )}
+            {deliveryEmailState.ok && (
+              <p style={{ color: "green", margin: "0.25rem 0 0" }}>
+                {deliveryEmailState.message ?? "Email sent ✓"}
+              </p>
+            )}
+          </details>
         </div>
       )}
 

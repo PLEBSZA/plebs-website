@@ -12,7 +12,7 @@ import {
   reopenOrder,
   updateFulfilmentTracking,
 } from "@/lib/commerce/fulfilment-service";
-import { sendFulfilmentDispatchedEmail } from "@/lib/email/fulfilment-emails";
+import { sendFulfilmentDispatchedEmail, sendDeliveryConfirmationEmail } from "@/lib/email/fulfilment-emails";
 
 export type FulfilmentActionState = {
   error?: string;
@@ -320,6 +320,60 @@ export async function sendTrackingEmailAction(
         priorSends > 0
           ? "Tracking email re-sent to the customer."
           : "Tracking email sent to the customer.",
+    };
+  }
+  if (result.status === "not_configured") {
+    return {
+      warning:
+        "Email is not configured (RESEND_API_KEY / RESEND_FROM_EMAIL). Order state was not changed.",
+    };
+  }
+  if (result.status === "refused") {
+    return { error: result.reason };
+  }
+  return { error: result.message };
+}
+
+export async function sendDeliveryEmailAction(
+  _prev: FulfilmentActionState,
+  formData: FormData,
+): Promise<FulfilmentActionState> {
+  const user = await requireAdminSession("orders:fulfil");
+  const orderId = String(formData.get("orderId") ?? "");
+  const confirmResend = String(formData.get("confirmResend") ?? "");
+
+  if (!orderId) return { error: "Missing order." };
+
+  const { db } = await import("@/lib/db");
+  const priorSends = await db.auditEvent.count({
+    where: {
+      entityType: "order",
+      entityId: orderId,
+      action: "order.delivery_email_sent",
+    },
+  });
+
+  if (priorSends > 0 && confirmResend !== "yes") {
+    return {
+      error: "Confirm the re-send before notifying the customer again.",
+    };
+  }
+
+  const result = await sendDeliveryConfirmationEmail({
+    orderId,
+    actorId: user.id,
+  });
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+
+  if (result.status === "sent") {
+    return {
+      ok: true,
+      message:
+        priorSends > 0
+          ? "Delivery email re-sent to the customer."
+          : "Delivery email sent to the customer.",
     };
   }
   if (result.status === "not_configured") {

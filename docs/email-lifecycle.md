@@ -1,7 +1,7 @@
 # PLEBS email lifecycle
 
 The application keeps branded React Email source under
-`src/lib/email/templates/`. Fourteen matching templates are published in
+`src/lib/email/templates/`. Sixteen matching templates are published in
 Resend and use stable aliases from `src/lib/email/template-aliases.ts`. Website
 triggers send those aliases through the shared Resend adapter, so the delivered
 message is the published template visible in the Resend dashboard.
@@ -38,6 +38,24 @@ message is the published template visible in the Resend dashboard.
   Idempotency keys vary per attempt
   (`fulfilment-dispatched/{id}/{sequence}/{trackingNumber}`) so Resend will not
   silently suppress an intentional re-send within its 24-hour key window.
+- Delivery confirmation: `plebs-delivery-confirmation` is **operator-triggered**
+  after an order is marked delivered (`order.delivery_email_sent` audit events).
+- Return received: `plebs-return-received` is **operator-triggered** from the
+  return detail page once `receivedAt` is set (`return.received_email_sent`
+  audit events).
+
+## Duplicating a template in Resend
+
+- `resend.templates.duplicate(aliasOrId)` creates a dashboard-only copy.
+- Every template must be **published** before it can be used for sending.
+  Editing a published template creates a new draft; the published version keeps
+  sending until you re-publish.
+- A dashboard-only duplicate is **not** tracked in this repo and will not be
+  managed by `npm run email:sync`. Prefer the repo-first path: add a React Email
+  component, register it in `scripts/sync-resend-templates.tsx`, then run
+  `npm run email:sync` with a full-access management key.
+- Use `duplicate()` only for throwaway experiments and one-off variants.
+- The production website key may be send-only; sync needs a management key.
 
 ## Ready templates without automatic sends
 

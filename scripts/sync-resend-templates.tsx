@@ -9,6 +9,7 @@ import {
   BackInStockEmail,
   ContactInquiryOwnerEmail,
   ContactReceivedEmail,
+  DeliveryConfirmationEmail,
   EditorialAnnouncementEmail,
   NewsletterUpdateEmail,
   NewsletterWelcomeEmail,
@@ -17,6 +18,7 @@ import {
   OrderConfirmedEmail,
   RefundConfirmationEmail,
   RestockRequestedEmail,
+  ReturnReceivedEmail,
   ReturnRequestOwnerEmail,
   ShippingConfirmationEmail,
 } from "../src/lib/email/templates";
@@ -164,6 +166,46 @@ const definitions = [
         trackingNumber={placeholder("TRACKING_NUMBER")}
         trackingUrl={placeholder("TRACKING_URL")}
         trackingCta={placeholder("TRACKING_CTA")}
+      />
+    ),
+  },
+  {
+    alias: emailTemplateAliases.deliveryConfirmation,
+    name: "PLEBS · Delivery confirmation",
+    subject: "Your PLEBS order {{{ORDER_NUMBER}}} has arrived",
+    from: transactionalFrom,
+    variables: [
+      variable("CUSTOMER_FIRST_NAME", "there"),
+      variable("ORDER_NUMBER"),
+      variable("DELIVERED_ON"),
+      variable("SUPPORT_URL", "https://www.plebs.co.za/contact/"),
+    ],
+    component: (
+      <DeliveryConfirmationEmail
+        firstName={placeholder("CUSTOMER_FIRST_NAME")}
+        orderNumber={placeholder("ORDER_NUMBER")}
+        deliveredOn={placeholder("DELIVERED_ON")}
+        supportUrl={placeholder("SUPPORT_URL")}
+      />
+    ),
+  },
+  {
+    alias: emailTemplateAliases.returnReceived,
+    name: "PLEBS · Return received",
+    subject: "We received your PLEBS return {{{RETURN_REFERENCE}}}",
+    from: transactionalFrom,
+    variables: [
+      variable("CUSTOMER_FIRST_NAME", "there"),
+      variable("ORDER_NUMBER"),
+      variable("RETURN_REFERENCE"),
+      variable("ITEM_DESCRIPTION"),
+    ],
+    component: (
+      <ReturnReceivedEmail
+        firstName={placeholder("CUSTOMER_FIRST_NAME")}
+        orderNumber={placeholder("ORDER_NUMBER")}
+        returnReference={placeholder("RETURN_REFERENCE")}
+        itemDescription={placeholder("ITEM_DESCRIPTION")}
       />
     ),
   },

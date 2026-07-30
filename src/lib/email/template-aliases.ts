@@ -5,6 +5,8 @@ export const emailTemplateAliases = {
   orderOwner: "plebs-order-owner",
   restockRequested: "plebs-restock-requested",
   shippingConfirmation: "plebs-shipping-confirmation",
+  deliveryConfirmation: "plebs-delivery-confirmation",
+  returnReceived: "plebs-return-received",
   refundConfirmation: "plebs-refund-confirmation",
   orderCancelled: "plebs-order-cancelled",
   newsletterWelcome: "plebs-newsletter-welcome",

@@ -7,8 +7,10 @@ import {
   getReturnForAdmin,
 } from "@/lib/commerce/returns-service";
 import { ExchangeShipmentPanel } from "./ExchangeShipmentPanel";
+import { ReturnReceivedEmailButton } from "./ReturnReceivedEmailButton";
 import { ReturnStatusForm } from "./ReturnStatusForm";
 import styles from "../../admin-pages.module.css";
+import { db } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "Return detail",
@@ -28,6 +30,13 @@ export default async function AdminReturnDetailPage({
   const deliveredAt = entry.order.fulfilments[0]?.deliveredAt ?? null;
   const showExchangeShipment =
     entry.exchange && canShowExchangeShipmentForm(entry.status);
+  const returnEmailSends = await db.auditEvent.count({
+    where: {
+      entityType: "return_request",
+      entityId: entry.id,
+      action: "return.received_email_sent",
+    },
+  });
 
   return (
     <>
@@ -141,6 +150,15 @@ export default async function AdminReturnDetailPage({
           deliveredAt={entry.exchange.deliveredAt}
         />
       ) : null}
+
+      <section className={styles.panel}>
+        <h2>Customer email</h2>
+        <ReturnReceivedEmailButton
+          returnId={entry.id}
+          hasReceivedAt={Boolean(entry.receivedAt)}
+          priorSendCount={returnEmailSends}
+        />
+      </section>
 
       <section className={styles.panel}>
         <h2>Update status</h2>

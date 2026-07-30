@@ -165,6 +165,77 @@ export function ShippingConfirmationEmail({
   );
 }
 
+export function DeliveryConfirmationEmail({
+  firstName,
+  orderNumber,
+  deliveredOn,
+  supportUrl = "https://www.plebs.co.za/contact/",
+}: {
+  firstName: string;
+  orderNumber: string;
+  deliveredOn: string;
+  supportUrl?: string;
+}) {
+  return (
+    <BrandedEmail
+      preview={`Order ${orderNumber} has arrived.`}
+      eyebrow="Delivered"
+      title={`${firstName}, your PLEBS order has arrived.`}
+    >
+      <EmailText>
+        Order <strong>{orderNumber}</strong> was recorded as delivered on{" "}
+        <strong>{deliveredOn}</strong>.
+      </EmailText>
+      <EmailText>
+        If anything looks wrong with the parcel or the fit, get in touch and we
+        will help from there.
+      </EmailText>
+      <EmailButton href={supportUrl}>Contact PLEBS</EmailButton>
+      <SmallPrint>
+        Keep this email handy if you need to quote your order number.
+      </SmallPrint>
+    </BrandedEmail>
+  );
+}
+
+export function ReturnReceivedEmail({
+  firstName,
+  orderNumber,
+  returnReference,
+  itemDescription,
+}: {
+  firstName: string;
+  orderNumber: string;
+  returnReference: string;
+  itemDescription: string;
+}) {
+  return (
+    <BrandedEmail
+      preview={`We received return ${returnReference}.`}
+      eyebrow="Return received"
+      title={`${firstName}, we have your return.`}
+    >
+      <EmailText>
+        The parcel for return <strong>{returnReference}</strong> (order{" "}
+        <strong>{orderNumber}</strong>) has arrived and will be inspected next.
+      </EmailText>
+      <DetailCard>
+        <DetailRow label="Return reference" value={returnReference} />
+        <DetailRow label="Item" value={itemDescription} />
+        <DetailRow label="Order" value={orderNumber} />
+      </DetailCard>
+      <EmailText>
+        Quote the return reference in any follow-up so we can find your case
+        quickly.
+      </EmailText>
+      <SmallPrint>
+        We will update you once inspection is complete. This email does not
+        confirm a refund or exchange outcome.
+      </SmallPrint>
+    </BrandedEmail>
+  );
+}
+
 export function RefundConfirmationEmail({
   firstName,
   orderNumber,

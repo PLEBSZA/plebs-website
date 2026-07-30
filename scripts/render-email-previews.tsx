@@ -16,6 +16,8 @@ import {
   RestockRequestedEmail,
   ReturnRequestOwnerEmail,
   ShippingConfirmationEmail,
+  DeliveryConfirmationEmail,
+  ReturnReceivedEmail,
   emailBrand,
 } from "../src/lib/email/templates";
 
@@ -74,6 +76,21 @@ const previews = {
       courier="The Courier Guy"
       trackingNumber="TCG123456789"
       trackingUrl="https://www.example.com/track/TCG123456789"
+    />
+  ),
+  "delivery-confirmation": (
+    <DeliveryConfirmationEmail
+      firstName="Alex"
+      orderNumber="PLEBS-260730-001"
+      deliveredOn="30 Jul 2026"
+    />
+  ),
+  "return-received": (
+    <ReturnReceivedEmail
+      firstName="Alex"
+      orderNumber="PLEBS-260730-001"
+      returnReference="RMA-M8XYZ-421"
+      itemDescription="Forest Green / S × 1"
     />
   ),
   "refund-confirmation": (
