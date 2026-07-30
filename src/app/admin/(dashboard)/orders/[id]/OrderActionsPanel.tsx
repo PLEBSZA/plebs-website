@@ -8,12 +8,15 @@ import {
   markDeliveredAction,
   completeOrderAction,
   reopenOrderAction,
+  updateTrackingAction,
+  sendTrackingEmailAction,
   type FulfilmentActionState,
 } from "@/app/admin/actions/fulfilment";
 import {
   createReturnAction,
   type ReturnActionState,
 } from "@/app/admin/actions/returns";
+import { TrackingPanel } from "@/components/admin/TrackingPanel";
 
 type Props = {
   orderId: string;
@@ -21,6 +24,15 @@ type Props = {
   paymentStatus: string;
   fulfilmentStatus: string;
   completeBlocker: string | null;
+  tracking?: {
+    courier?: string | null;
+    trackingNumber?: string | null;
+    trackingUrl?: string | null;
+    note?: string | null;
+    customerNotifiedAt?: string | null;
+    notifiedBy?: string | null;
+    notificationCount: number;
+  } | null;
   items: { id: string; sku: string; colour: string; size: string }[];
 };
 
@@ -33,6 +45,7 @@ export function OrderActionsPanel({
   paymentStatus,
   fulfilmentStatus,
   completeBlocker,
+  tracking,
   items,
 }: Props) {
   const [packState, packAction, packing] = useActionState(
@@ -59,6 +72,14 @@ export function OrderActionsPanel({
     reopenOrderAction,
     initialFulfilment,
   );
+  const [trackingState, trackingAction, savingTracking] = useActionState(
+    updateTrackingAction,
+    initialFulfilment,
+  );
+  const [emailState, emailAction, sendingEmail] = useActionState(
+    sendTrackingEmailAction,
+    initialFulfilment,
+  );
   const [returnState, returnAction, returningPending] = useActionState(
     createReturnAction,
     initialReturn,
@@ -70,9 +91,15 @@ export function OrderActionsPanel({
   const isFulfilled = fulfilmentStatus === "FULFILLED";
   const isDelivered = fulfilmentStatus === "DELIVERED";
   const isPacked = fulfilmentStatus === "PACKED";
-  // Eligible fulfilment states: FULFILLED | DELIVERED | RETURNED (PLEBS-ORDERS-002).
   const canCreateReturn =
     isFulfilled || isDelivered || fulfilmentStatus === "RETURNED";
+  const hasDispatched = isFulfilled || isDelivered || fulfilmentStatus === "RETURNED";
+  const trackingMode = isCancelled
+    ? "read-only"
+    : hasDispatched
+      ? "editable"
+      : "empty";
+  const notificationCount = tracking?.notificationCount ?? 0;
 
   return (
     <section
@@ -105,7 +132,7 @@ export function OrderActionsPanel({
         </div>
       )}
 
-      {!isCancelled && isPaid && !isFulfilled && !isDelivered && (
+      {!isCancelled && isPaid && !hasDispatched && (
         <div style={{ marginBottom: "var(--space-3)" }}>
           <form action={fulfilAction}>
             <input type="hidden" name="orderId" value={orderId} />
@@ -141,7 +168,7 @@ export function OrderActionsPanel({
               style={{ width: "100%", marginBottom: "0.5rem" }}
             />
             <button type="submit" disabled={fulfilling}>
-              {fulfilling ? "Fulfilling…" : "Mark as fulfilled"}
+              {fulfilling ? "Dispatching…" : "Mark as fulfilled"}
             </button>
           </form>
           {fulfilState.error && (
@@ -151,11 +178,100 @@ export function OrderActionsPanel({
           )}
           {fulfilState.ok && (
             <p style={{ color: "green", margin: "0.25rem 0 0" }}>
-              Fulfilled ✓
+              Dispatched ✓ — send the tracking email when ready.
             </p>
           )}
         </div>
       )}
+
+      <TrackingPanel
+        mode={trackingMode}
+        title="Courier & tracking"
+        values={tracking ?? undefined}
+        formAction={trackingMode === "editable" ? trackingAction : undefined}
+        pending={savingTracking}
+        error={trackingState.error}
+        ok={trackingState.ok}
+        okMessage={trackingState.message ?? "Tracking saved ✓"}
+        submitLabel="Save tracking"
+        hiddenFields={
+          <input type="hidden" name="orderId" value={orderId} />
+        }
+        footer={
+          hasDispatched && !isCancelled ? (
+            <div style={{ marginTop: "0.75rem" }}>
+              {notificationCount > 0 && tracking?.customerNotifiedAt ? (
+                <p style={{ color: "var(--color-muted)", margin: "0 0 0.5rem" }}>
+                  Last notified{" "}
+                  {new Intl.DateTimeFormat("en-ZA", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(tracking.customerNotifiedAt))}
+                  {tracking.notifiedBy ? ` by ${tracking.notifiedBy}` : ""}
+                  {notificationCount > 1
+                    ? ` · ${notificationCount} sends`
+                    : ""}
+                </p>
+              ) : (
+                <p style={{ color: "var(--color-muted)", margin: "0 0 0.5rem" }}>
+                  Customer has not been emailed tracking yet.
+                </p>
+              )}
+              {notificationCount === 0 ? (
+                <form action={emailAction}>
+                  <input type="hidden" name="orderId" value={orderId} />
+                  <button type="submit" disabled={sendingEmail}>
+                    {sendingEmail ? "Sending…" : "Send tracking email"}
+                  </button>
+                </form>
+              ) : (
+                <details>
+                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                    Re-send tracking email
+                  </summary>
+                  <form action={emailAction} style={{ marginTop: "0.5rem" }}>
+                    <input type="hidden" name="orderId" value={orderId} />
+                    <label
+                      style={{
+                        display: "flex",
+                        gap: "0.5rem",
+                        alignItems: "center",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        name="confirmResend"
+                        value="yes"
+                        required
+                      />
+                      Confirm re-send with the current tracking details
+                    </label>
+                    <button type="submit" disabled={sendingEmail}>
+                      {sendingEmail ? "Sending…" : "Re-send tracking email"}
+                    </button>
+                  </form>
+                </details>
+              )}
+              {emailState.error && (
+                <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
+                  {emailState.error}
+                </p>
+              )}
+              {emailState.warning && (
+                <p style={{ color: "#a15c00", margin: "0.25rem 0 0" }}>
+                  {emailState.warning}
+                </p>
+              )}
+              {emailState.ok && (
+                <p style={{ color: "green", margin: "0.25rem 0 0" }}>
+                  {emailState.message ?? "Email sent ✓"}
+                </p>
+              )}
+            </div>
+          ) : null
+        }
+      />
 
       {!isCancelled && isFulfilled && (
         <div style={{ marginBottom: "var(--space-3)" }}>
@@ -255,41 +371,38 @@ export function OrderActionsPanel({
         </details>
       )}
 
-      {!isCancelled &&
-        !isFulfilled &&
-        !isDelivered &&
-        fulfilmentStatus !== "RETURNED" && (
-          <details style={{ marginBottom: "var(--space-3)" }}>
-            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-              Cancel order
-            </summary>
-            <form action={cancelAction} style={{ marginTop: "0.5rem" }}>
-              <input type="hidden" name="orderId" value={orderId} />
-              <input
-                name="reason"
-                placeholder="Reason (optional)"
-                style={{ width: "100%", marginBottom: "0.5rem" }}
-              />
-              <button
-                type="submit"
-                disabled={cancelling}
-                style={{ color: "crimson" }}
-              >
-                {cancelling ? "Cancelling…" : "Cancel order"}
-              </button>
-            </form>
-            {cancelState.error && (
-              <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
-                {cancelState.error}
-              </p>
-            )}
-            {cancelState.ok && (
-              <p style={{ color: "green", margin: "0.25rem 0 0" }}>
-                Order cancelled.
-              </p>
-            )}
-          </details>
-        )}
+      {!isCancelled && !hasDispatched && (
+        <details style={{ marginBottom: "var(--space-3)" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Cancel order
+          </summary>
+          <form action={cancelAction} style={{ marginTop: "0.5rem" }}>
+            <input type="hidden" name="orderId" value={orderId} />
+            <input
+              name="reason"
+              placeholder="Reason (optional)"
+              style={{ width: "100%", marginBottom: "0.5rem" }}
+            />
+            <button
+              type="submit"
+              disabled={cancelling}
+              style={{ color: "crimson" }}
+            >
+              {cancelling ? "Cancelling…" : "Cancel order"}
+            </button>
+          </form>
+          {cancelState.error && (
+            <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
+              {cancelState.error}
+            </p>
+          )}
+          {cancelState.ok && (
+            <p style={{ color: "green", margin: "0.25rem 0 0" }}>
+              Order cancelled.
+            </p>
+          )}
+        </details>
+      )}
 
       {canCreateReturn && items.length > 0 && (
         <details>

@@ -30,10 +30,14 @@ message is the published template visible in the Resend dashboard.
   `plebs-order-owner` internally. Paystack may separately send its own payment
   receipt.
 - Restock request: `plebs-restock-requested` confirms the exact colour and size.
-- Dispatch: `plebs-shipping-confirmation` sends courier and tracking information
-  when an administrator marks an order fulfilled.
-  `Fulfilment.customerNotifiedAt` and the Resend idempotency key prevent
-  duplicate notices.
+- Dispatch tracking: `plebs-shipping-confirmation` is **operator-triggered** from
+  the order detail page after fulfilment (Save tracking and Send tracking email
+  are separate actions). Re-sends are allowed after tracking corrections.
+  Notification history is recorded as `order.tracking_email_sent` audit events;
+  `Fulfilment.customerNotifiedAt` stores the last successful send time.
+  Idempotency keys vary per attempt
+  (`fulfilment-dispatched/{id}/{sequence}/{trackingNumber}`) so Resend will not
+  silently suppress an intentional re-send within its 24-hour key window.
 
 ## Ready templates without automatic sends
 

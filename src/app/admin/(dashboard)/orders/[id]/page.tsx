@@ -49,6 +49,17 @@ export default async function AdminOrderDetailPage({
       timeStyle: "short",
     }).format(value);
 
+  const trackingEmailEvents = await db.auditEvent.findMany({
+    where: {
+      entityType: "order",
+      entityId: order.id,
+      action: "order.tracking_email_sent",
+    },
+    include: { actor: { select: { name: true, email: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const lastTrackingEmail = trackingEmailEvents[0];
+
   return (
     <>
       <header className={styles.pageHeader}>
@@ -251,6 +262,25 @@ export default async function AdminOrderDetailPage({
         paymentStatus={order.paymentStatus}
         fulfilmentStatus={order.fulfilmentStatus}
         completeBlocker={completeBlocker}
+        tracking={
+          latestFulfilment
+            ? {
+                courier: latestFulfilment.courier,
+                trackingNumber: latestFulfilment.trackingNumber,
+                trackingUrl: latestFulfilment.trackingUrl,
+                note: latestFulfilment.internalNote,
+                customerNotifiedAt:
+                  latestFulfilment.customerNotifiedAt?.toISOString() ??
+                  lastTrackingEmail?.createdAt.toISOString() ??
+                  null,
+                notifiedBy:
+                  lastTrackingEmail?.actor?.name ??
+                  lastTrackingEmail?.actor?.email ??
+                  null,
+                notificationCount: trackingEmailEvents.length,
+              }
+            : null
+        }
         items={order.items.map((item) => ({
           id: item.id,
           sku: item.sku,

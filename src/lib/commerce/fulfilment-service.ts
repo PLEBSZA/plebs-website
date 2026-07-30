@@ -12,7 +12,6 @@ import {
   releaseOrderReservation,
 } from "@/lib/commerce/inventory-reservation";
 import { db } from "@/lib/db";
-import { sendFulfilmentDispatchedEmail } from "@/lib/email/fulfilment-emails";
 import { sendOrderPaidEmails } from "@/lib/email/order-emails";
 
 async function upsertFulfilment(
@@ -283,16 +282,74 @@ export async function fulfilOrder(input: {
     },
   });
 
-  try {
-    await sendFulfilmentDispatchedEmail(fulfilment.id);
-  } catch (error) {
-    console.error(
-      "Order was fulfilled, but its dispatch email could not be sent:",
-      error instanceof Error ? error.message : "Unknown email error",
-    );
+  // Dispatch email is operator-triggered via sendTrackingEmailAction (PLEBS-ORDERS-003).
+  return fulfilment;
+}
+
+export async function updateFulfilmentTracking(input: {
+  orderId: string;
+  userId: string;
+  courier: string;
+  trackingNumber: string;
+  trackingUrl?: string;
+  note?: string;
+}) {
+  const order = await db.order.findUniqueOrThrow({
+    where: { id: input.orderId },
+    include: {
+      fulfilments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+
+  if (order.status === OrderStatus.CANCELLED) {
+    throw new Error("Cancelled orders cannot update tracking.");
   }
 
-  return fulfilment;
+  const existing = order.fulfilments[0];
+  if (!existing) {
+    throw new Error("No fulfilment record exists for this order yet.");
+  }
+
+  const courier = input.courier.trim();
+  const trackingNumber = input.trackingNumber.trim();
+  const trackingUrl = input.trackingUrl?.trim() || null;
+  if (!courier || !trackingNumber) {
+    throw new Error("Courier and tracking number are required.");
+  }
+
+  const note = input.note?.trim();
+  const internalNote = note
+    ? [existing.internalNote, note].filter(Boolean).join("\n")
+    : existing.internalNote;
+
+  const updated = await db.fulfilment.update({
+    where: { id: existing.id },
+    data: {
+      courier,
+      trackingNumber,
+      trackingUrl,
+      internalNote,
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: input.userId,
+    action: "order.tracking_updated",
+    entityType: "order",
+    entityId: order.id,
+    beforeState: {
+      courier: existing.courier,
+      trackingNumber: existing.trackingNumber,
+      trackingUrl: existing.trackingUrl,
+    },
+    afterState: {
+      courier: updated.courier,
+      trackingNumber: updated.trackingNumber,
+      trackingUrl: updated.trackingUrl,
+    },
+  });
+
+  return updated;
 }
 
 export async function markOrderDelivered(input: {
