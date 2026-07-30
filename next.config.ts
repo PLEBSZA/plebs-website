@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   trailingSlash: true,
   poweredByHeader: false,
+  images: {
+    formats: ["image/avif", "image/webp"],
+    // Product imagery changes rarely; longer TTL cuts Vercel transform cost.
+    // Updating an image still requires a new filename or a cache purge.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
   async redirects() {
     return [
       {

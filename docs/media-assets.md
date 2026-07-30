@@ -4,6 +4,16 @@ Production media is generated with `node scripts/prepare-media.mjs`. Supplied
 working files are preserved under `assets/source/plebs/` and are not publicly
 served.
 
+## Delivery pipeline (next/image)
+
+- `next.config.ts` serves **AVIF first**, then WebP (`formats: ['image/avif', 'image/webp']`).
+- Optimized image CDN cache TTL is **30 days** (`minimumCacheTTL`). Product photos
+  change rarely; replacing an image requires a **new filename** or a Vercel image
+  cache purge, or visitors may keep seeing the old transform.
+- Storefront sources under `public/images/products/` are capped at a **1920 px**
+  longest edge in `prepare-media.mjs` — nothing on the site requests larger via
+  `sizes`. Email JPEGs and social OG WebPs are unchanged (inbox / crawler formats).
+
 ## Source-to-production mapping
 
 | Supplied source | Production asset | Purpose |

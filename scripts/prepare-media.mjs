@@ -93,6 +93,9 @@ const campaignSource = path.join(sourceDir, "hero.webp");
 const picnicSource = path.join(sourceDir, "PLEB_2.webp");
 const sharingSource = path.join(sourceDir, "PLEB_3.webp");
 
+/** Largest edge any storefront `sizes` attribute can request via next/image. */
+const STOREFRONT_MAX_EDGE = 1920;
+
 await Promise.all([
   sharp(campaignSource)
     .rotate()
@@ -105,9 +108,23 @@ await Promise.all([
     .webp({ quality: 82, smartSubsample: true })
     .toFile(path.join(productDir, "plebs-campaign-editorial.webp")),
   sharp(picnicSource)
+    .rotate()
+    .resize({
+      width: STOREFRONT_MAX_EDGE,
+      height: STOREFRONT_MAX_EDGE,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .webp({ quality: 82, smartSubsample: true })
     .toFile(path.join(productDir, "plebs-picnic-lifestyle.webp")),
   sharp(sharingSource)
+    .rotate()
+    .resize({
+      width: STOREFRONT_MAX_EDGE,
+      height: STOREFRONT_MAX_EDGE,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .webp({ quality: 82, smartSubsample: true })
     .toFile(path.join(productDir, "plebs-picnic-sharing.webp")),
 ]);
@@ -150,12 +167,17 @@ async function writePortraitWebp(inputPath, outputName, { width = 1200, height =
     .toFile(path.join(productDir, outputName));
 }
 
-async function writeLifestyleWebp(inputPath, outputName, maxEdge = 1600) {
+async function writeLifestyleWebp(
+  inputPath,
+  outputName,
+  maxEdge = STOREFRONT_MAX_EDGE,
+) {
+  const edge = Math.min(maxEdge, STOREFRONT_MAX_EDGE);
   await sharp(inputPath)
     .rotate()
     .resize({
-      width: maxEdge,
-      height: maxEdge,
+      width: edge,
+      height: edge,
       fit: "inside",
       withoutEnlargement: true,
     })
@@ -175,7 +197,7 @@ await Promise.all([
   writeLifestyleWebp(
     path.join(detailsSourceDir, "texture_2.jpg"),
     "plebs-detail-folded-label-wide.webp",
-    1800,
+    STOREFRONT_MAX_EDGE,
   ),
   writePortraitWebp(
     path.join(detailsSourceDir, "texture_3.jpg"),
