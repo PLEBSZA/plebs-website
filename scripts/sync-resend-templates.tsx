@@ -179,6 +179,7 @@ const definitions = [
       variable("ORDER_NUMBER"),
       variable("DELIVERED_ON"),
       variable("SUPPORT_URL", "https://www.plebs.co.za/contact/"),
+      variable("RETURNS_URL", "https://www.plebs.co.za/shipping-returns/"),
     ],
     component: (
       <DeliveryConfirmationEmail
@@ -186,6 +187,7 @@ const definitions = [
         orderNumber={placeholder("ORDER_NUMBER")}
         deliveredOn={placeholder("DELIVERED_ON")}
         supportUrl={placeholder("SUPPORT_URL")}
+        returnsUrl={placeholder("RETURNS_URL")}
       />
     ),
   },

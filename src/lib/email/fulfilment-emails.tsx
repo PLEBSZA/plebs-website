@@ -179,6 +179,7 @@ export async function sendDeliveryConfirmationEmail(input: {
           ORDER_NUMBER: order.number,
           DELIVERED_ON: deliveredOn,
           SUPPORT_URL: "https://www.plebs.co.za/contact/",
+          RETURNS_URL: "https://www.plebs.co.za/shipping-returns/",
         },
       },
     });

@@ -452,10 +452,140 @@ export async function completeOrder(input: {
     entityType: "order",
     entityId: order.id,
     reason: input.reason,
-    afterState: { status: OrderStatus.COMPLETED },
+    afterState: {
+      status: OrderStatus.COMPLETED,
+      ...(input.reason?.startsWith("auto-complete")
+        ? { source: "autoCompleteDeliveredOrders" }
+        : {}),
+    },
   });
 
   return { ok: true };
+}
+
+export type AutoCompleteResult = {
+  configured: boolean;
+  dryRun: boolean;
+  quietPeriodDays: number | null;
+  candidates: { id: string; number: string; deliveredAt: string }[];
+  completed: string[];
+  refused: { id: string; number: string; reason: string }[];
+  message?: string;
+};
+
+/**
+ * Completes delivered, paid orders with no open returns after a quiet period.
+ * Calls completeOrder() so guards stay in one place. Default is dry-run.
+ * quietPeriodDays must come from the owner (env); there is no policy default.
+ */
+export async function autoCompleteDeliveredOrders(input?: {
+  quietPeriodDays?: number;
+  actorId?: string | null;
+  dryRun?: boolean;
+}): Promise<AutoCompleteResult> {
+  const dryRun = input?.dryRun !== false;
+  const fromEnv = process.env.ORDER_AUTO_COMPLETE_QUIET_PERIOD_DAYS?.trim();
+  const quietPeriodDays =
+    input?.quietPeriodDays ??
+    (fromEnv && Number.isFinite(Number(fromEnv)) ? Number(fromEnv) : null);
+
+  if (quietPeriodDays == null || quietPeriodDays <= 0 || !Number.isFinite(quietPeriodDays)) {
+    const message =
+      "ORDER_AUTO_COMPLETE_QUIET_PERIOD_DAYS is unset or invalid; auto-complete no-op.";
+    console.info(message);
+    return {
+      configured: false,
+      dryRun,
+      quietPeriodDays: null,
+      candidates: [],
+      completed: [],
+      refused: [],
+      message,
+    };
+  }
+
+  const cutoff = new Date(
+    Date.now() - quietPeriodDays * 24 * 60 * 60 * 1000,
+  );
+
+  const orders = await db.order.findMany({
+    where: {
+      status: OrderStatus.OPEN,
+      paymentStatus: PaymentStatus.PAID,
+      fulfilmentStatus: FulfilmentStatus.DELIVERED,
+      fulfilments: {
+        some: {
+          deliveredAt: { lt: cutoff, not: null },
+        },
+      },
+      returnRequests: {
+        none: {
+          status: {
+            notIn: [
+              ReturnStatus.CLOSED,
+              ReturnStatus.REJECTED,
+              ReturnStatus.REFUNDED,
+            ],
+          },
+        },
+      },
+    },
+    include: {
+      fulfilments: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+    take: 100,
+  });
+
+  const candidates = orders.map((order) => ({
+    id: order.id,
+    number: order.number,
+    deliveredAt:
+      order.fulfilments[0]?.deliveredAt?.toISOString() ?? "unknown",
+  }));
+
+  if (dryRun) {
+    return {
+      configured: true,
+      dryRun: true,
+      quietPeriodDays,
+      candidates,
+      completed: [],
+      refused: [],
+      message: `Dry-run: ${candidates.length} order(s) would be completed.`,
+    };
+  }
+
+  const completed: string[] = [];
+  const refused: { id: string; number: string; reason: string }[] = [];
+
+  for (const order of orders) {
+    const result = await completeOrder({
+      orderId: order.id,
+      userId: input?.actorId ?? undefined,
+      reason: `auto-complete after ${quietPeriodDays}-day quiet period`,
+    });
+    if (result.ok) {
+      completed.push(order.id);
+    } else {
+      refused.push({
+        id: order.id,
+        number: order.number,
+        reason: result.reason,
+      });
+    }
+  }
+
+  return {
+    configured: true,
+    dryRun: false,
+    quietPeriodDays,
+    candidates,
+    completed,
+    refused,
+  };
 }
 
 export async function reopenOrder(input: {

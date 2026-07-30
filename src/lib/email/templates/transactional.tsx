@@ -170,11 +170,13 @@ export function DeliveryConfirmationEmail({
   orderNumber,
   deliveredOn,
   supportUrl = "https://www.plebs.co.za/contact/",
+  returnsUrl = "https://www.plebs.co.za/shipping-returns/",
 }: {
   firstName: string;
   orderNumber: string;
   deliveredOn: string;
   supportUrl?: string;
+  returnsUrl?: string;
 }) {
   return (
     <BrandedEmail
@@ -190,9 +192,15 @@ export function DeliveryConfirmationEmail({
         If anything looks wrong with the parcel or the fit, get in touch and we
         will help from there.
       </EmailText>
+      <EmailText>
+        Need a return or exchange? Read the current guidance on our shipping
+        and returns page, then contact us with your order number so we can help.
+      </EmailText>
+      <EmailButton href={returnsUrl}>Shipping &amp; returns</EmailButton>
       <EmailButton href={supportUrl}>Contact PLEBS</EmailButton>
       <SmallPrint>
-        Keep this email handy if you need to quote your order number.
+        Keep this email handy if you need to quote your order number. Return
+        windows and refund timing follow the policy published on our site.
       </SmallPrint>
     </BrandedEmail>
   );

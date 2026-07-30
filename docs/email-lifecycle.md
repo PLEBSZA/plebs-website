@@ -98,3 +98,6 @@ attached to an unsafe or incomplete trigger.
   are implemented.
 - Complete an inbox rendering pass in Gmail, Outlook and Apple Mail after the
   email image assets are deployed.
+- Optional auto-complete of delivered orders
+  (`ORDER_AUTO_COMPLETE_QUIET_PERIOD_DAYS` + cron/script) stays off until the
+  owner sets a quiet period at least as long as the ECTA cooling-off window.
