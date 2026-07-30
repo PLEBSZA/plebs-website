@@ -1,8 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
-import { ImagePlaceholder } from "@/components/ui/ImagePlaceholder";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { foldedLabelWideImage } from "@/lib/media";
 import { createPageMetadata } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
 import { corduroyFabric } from "@/lib/sizing";
@@ -109,9 +110,13 @@ export default function CottonCorduroyPage() {
         </header>
 
         <div className="editorial-page__media">
-          <ImagePlaceholder
-            label="Cotton corduroy texture close-up"
-            aspect="wide"
+          <Image
+            src={foldedLabelWideImage.src}
+            width={foldedLabelWideImage.width}
+            height={foldedLabelWideImage.height}
+            alt={foldedLabelWideImage.alt}
+            sizes="(max-width: 899px) calc(100vw - 2rem), 52rem"
+            className="editorial-page__image"
           />
         </div>
 

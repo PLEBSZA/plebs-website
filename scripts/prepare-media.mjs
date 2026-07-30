@@ -119,6 +119,11 @@ await Promise.all([
     path.join(detailsSourceDir, "texture_2.jpg"),
     "plebs-detail-folded-label.webp",
   ),
+  writeLifestyleWebp(
+    path.join(detailsSourceDir, "texture_2.jpg"),
+    "plebs-detail-folded-label-wide.webp",
+    1800,
+  ),
   writePortraitWebp(
     path.join(detailsSourceDir, "texture_3.jpg"),
     "plebs-detail-bib-label.webp",

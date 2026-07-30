@@ -15,6 +15,7 @@ import {
 } from "@/lib/sizing";
 import { DetailSlideshow } from "@/components/product/DetailSlideshow";
 import { ProductPageGallery } from "@/components/product/ProductPageGallery";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import {
   ProductPurchasePanel,
   ProductPurchaseProvider,
@@ -185,14 +186,12 @@ export default async function ProductPage() {
     <ProductPurchaseProvider>
       <JsonLd data={structuredData} />
       <article className={styles.page}>
-        <nav className={`container ${styles.breadcrumbs}`} aria-label="Breadcrumb">
-          <ol>
-            <li>
-              <Link href="/">Home</Link>
-            </li>
-            <li aria-current="page">Corduroy Dungarees</li>
-          </ol>
-        </nav>
+        <Breadcrumbs
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Corduroy Dungarees" },
+          ]}
+        />
 
         <div className={`container ${styles.heroGrid}`}>
           <ProductPageGallery />

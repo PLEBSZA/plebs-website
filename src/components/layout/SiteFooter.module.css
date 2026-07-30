@@ -23,7 +23,7 @@
 }
 
 .brand {
-  width: min(100%, 13rem);
+  width: min(100%, 9.1rem);
   margin: 0 0 1rem;
   padding: 0.5rem;
   background: var(--color-cream);

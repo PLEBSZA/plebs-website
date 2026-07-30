@@ -176,6 +176,12 @@ export const primaryProductImage = cottonCorduroyDungareeImages[0];
 export const lifestyleProductImage = cottonCorduroyDungareeImages[1];
 export const editorialProductImage = cottonCorduroyDungareeImages[2];
 export const fabricTextureImage = cottonCorduroyDetailImages[0];
+export const foldedLabelWideImage = {
+  src: `${productBase}/plebs-detail-folded-label-wide.webp`,
+  width: 1800,
+  height: 1200,
+  alt: "Folded forest green cotton corduroy dungarees with a PLEBS label visible on the bib, resting on a patterned rug.",
+} as const;
 
 export const brandMedia = {
   logo: {

@@ -20,7 +20,7 @@
 .brand {
   grid-column: 2;
   display: block;
-  width: clamp(8.5rem, 37vw, 10.5rem);
+  width: clamp(6rem, 26vw, 7.35rem);
   text-decoration: none;
 }
 
@@ -39,7 +39,7 @@
 
   .brand {
     grid-column: auto;
-    width: 10.5rem;
+    width: 7.35rem;
   }
 
   .desktopNav {
