@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Prefer Cache Components + `'use cache'` for shared catalogue data (PLEBS-PERF-002).
+  cacheComponents: true,
   trailingSlash: true,
   poweredByHeader: false,
   async redirects() {

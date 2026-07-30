@@ -1,23 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Source_Sans_3 } from "next/font/google";
-import { headers } from "next/headers";
-import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
-import { SiteHeader } from "@/components/layout/SiteHeader";
-import { SiteFooter } from "@/components/layout/SiteFooter";
-import { ConversionEvents } from "@/components/analytics/ConversionEvents";
-import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import { CartProvider } from "@/components/cart/CartProvider";
-import { StorefrontCatalogueProvider } from "@/components/commerce/StorefrontCatalogueProvider";
-import { JsonLd } from "@/components/seo/JsonLd";
-import { getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 import { shouldIndexSite, getCanonicalSiteUrl } from "@/lib/env";
 import { defaultOgImage } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
-import {
-  buildGraph,
-  buildOrganizationJsonLd,
-  buildWebSiteJsonLd,
-} from "@/lib/structured-data";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -68,51 +53,18 @@ export const metadata: Metadata = {
     : { index: false, follow: false },
 };
 
-export default async function RootLayout({
+/**
+ * Root layout: fonts + shell only. No Dynamic APIs, no data fetching.
+ * Marketing chrome lives in `(site)/layout.tsx`; admin keeps its own layout.
+ */
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
-
-  if (isAdminRoute) {
-    return (
-      <html lang="en-ZA" className={`${fraunces.variable} ${sourceSans.variable}`}>
-        <body>{children}</body>
-      </html>
-    );
-  }
-
-  const siteGraph = buildGraph([
-    buildOrganizationJsonLd(),
-    buildWebSiteJsonLd(),
-  ]);
-
-  const catalogue = await getStorefrontCatalogue();
-
   return (
     <html lang="en-ZA" className={`${fraunces.variable} ${sourceSans.variable}`}>
-      <body>
-        <StorefrontCatalogueProvider catalogue={catalogue}>
-          <CartProvider>
-            <a href="#main-content" className="skip-link">
-              Skip to content
-            </a>
-            <div className="site-shell">
-              <AnnouncementBar />
-              <SiteHeader />
-              <main id="main-content" className="site-main">
-                {children}
-              </main>
-              <SiteFooter />
-            </div>
-            <ConversionEvents />
-            <GoogleAnalytics />
-            <JsonLd data={siteGraph} />
-          </CartProvider>
-        </StorefrontCatalogueProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

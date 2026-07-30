@@ -9,6 +9,7 @@ import {
   receiveProductionBatch,
 } from "@/lib/commerce/batch-service";
 import { getInventoryMatrix } from "@/lib/commerce/inventory-service";
+import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
 
 export type BatchActionState = {
   error?: string;
@@ -72,6 +73,7 @@ export async function createBatchAction(
     });
     revalidatePath("/admin/batches");
     revalidatePath("/admin/inventory");
+    revalidateStorefrontCatalogue();
     redirect(`/admin/batches/${batch.id}`);
   } catch (error) {
     if (
@@ -120,5 +122,6 @@ export async function receiveBatchAction(
   revalidatePath(`/admin/batches/${batchId}`);
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/inventory/history");
+  revalidateStorefrontCatalogue();
   return { ok: true };
 }

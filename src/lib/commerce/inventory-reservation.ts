@@ -9,6 +9,7 @@ import {
 import { db } from "@/lib/db";
 import { calculateAvailableQuantity } from "@/lib/commerce/inventory-status";
 import { findStorefrontVariant, getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
+import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
 
 export async function getStockQuantity(sizeNameOrId: string): Promise<number> {
   const catalogue = await getStorefrontCatalogue();
@@ -88,7 +89,7 @@ export async function reserveStockForOrder(input: {
   variantId: string;
   quantity: number;
 }) {
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const inventoryItem = await tx.inventoryItem.findUniqueOrThrow({
       where: { variantId: input.variantId },
       include: {
@@ -156,10 +157,16 @@ export async function reserveStockForOrder(input: {
       reservationId: reservation.id,
     };
   });
+
+  if (result.ok) {
+    revalidateStorefrontCatalogue();
+  }
+
+  return result;
 }
 
 export async function releaseOrderReservation(orderId: string) {
-  return db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     const reservations = await tx.inventoryReservation.findMany({
       where: {
         orderId,
@@ -190,10 +197,12 @@ export async function releaseOrderReservation(orderId: string) {
       });
     }
   });
+
+  revalidateStorefrontCatalogue();
 }
 
 export async function convertOrderReservation(orderId: string) {
-  return db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     const reservations = await tx.inventoryReservation.findMany({
       where: {
         orderId,
@@ -247,4 +256,6 @@ export async function convertOrderReservation(orderId: string) {
       });
     }
   });
+
+  revalidateStorefrontCatalogue();
 }

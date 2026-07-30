@@ -7,6 +7,7 @@ import {
   adjustInventoryByDelta,
   adjustInventoryToCount,
 } from "@/lib/commerce/inventory-service";
+import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
 import { inventoryAdjustmentSchema } from "@/lib/validation/inventory";
 
 export type InventoryActionState = {
@@ -82,5 +83,6 @@ export async function adjustInventoryAction(
   revalidatePath("/admin");
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/inventory/history");
+  revalidateStorefrontCatalogue();
   return { ok: true };
 }

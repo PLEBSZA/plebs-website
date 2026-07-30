@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cacheLife } from "next/cache";
 import { PlebsLogo } from "@/components/brand/PlebsLogo";
 import { NewsletterForm } from "@/components/ui/NewsletterForm";
 import { siteConfig } from "@/lib/site";
@@ -39,7 +40,15 @@ const footerGroups = [
   },
 ] as const;
 
-export function SiteFooter() {
+async function copyrightYear() {
+  "use cache";
+  cacheLife("days");
+  return new Date().getFullYear();
+}
+
+export async function SiteFooter() {
+  const year = await copyrightYear();
+
   return (
     <footer className={styles.footer}>
       <div className={`container ${styles.grid}`}>
@@ -72,7 +81,7 @@ export function SiteFooter() {
 
       <div className={`container ${styles.bottom}`}>
         <p>
-          © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
+          © {year} {siteConfig.name}. All rights reserved.
         </p>
       </div>
     </footer>

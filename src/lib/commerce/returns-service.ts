@@ -11,6 +11,7 @@ import {
 } from "@/generated/prisma/client";
 import { recordAuditEvent } from "@/lib/admin/audit";
 import { reopenOrder } from "@/lib/commerce/fulfilment-service";
+import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
 import { db } from "@/lib/db";
 import { createReturnReference } from "@/lib/orders";
 
@@ -403,6 +404,8 @@ async function restockReturnedVariant(input: {
       },
     });
   });
+
+  revalidateStorefrontCatalogue();
 }
 
 export { ReturnStatus, ReturnDisposition, ExchangeStatus };

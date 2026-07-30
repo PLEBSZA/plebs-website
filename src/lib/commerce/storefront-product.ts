@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cache } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import {
   ProductStatus,
   PublicationStatus,
@@ -24,10 +24,22 @@ import { productData as staticFallback } from "@/lib/product";
 
 const DEFAULT_SLUG = "cotton-corduroy-dungarees";
 
-/** Canonical storefront product accessor (DB-backed; static seed as fallback). */
-export const getStorefrontCatalogue = cache(async function getStorefrontCatalogue(
+/** Cache tag invalidated from admin product / inventory / batch writes. */
+export const STOREFRONT_CATALOGUE_TAG = "storefront-catalogue";
+
+/**
+ * Canonical storefront product accessor (DB-backed; static seed as fallback).
+ * Cached via Cache Components so marketing layouts can prerender.
+ * Revalidation window: `minutes` — commercial trade-off vs overselling risk
+ * (owner can shorten via invalidation; admin writes also call revalidateTag).
+ */
+export async function getStorefrontCatalogue(
   slug = DEFAULT_SLUG,
 ): Promise<StorefrontCatalogue> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(STOREFRONT_CATALOGUE_TAG);
+
   const product = await db.product.findFirst({
     where: {
       slug,
@@ -215,7 +227,7 @@ export const getStorefrontCatalogue = cache(async function getStorefrontCatalogu
       status: variant.status,
     })),
   };
-});
+}
 
 export async function findStorefrontVariant(input: {
   colour: string;

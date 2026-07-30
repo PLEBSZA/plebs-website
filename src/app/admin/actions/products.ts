@@ -10,6 +10,7 @@ import {
   addColourWithVariants,
   updateVariantStatus,
 } from "@/lib/commerce/product-service";
+import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
 import { ProductStatus, PublicationStatus, VariantStatus, FeedStatus } from "@/generated/prisma/client";
 
 export type ProductActionState = {
@@ -119,6 +120,7 @@ export async function createProductAction(
 
     revalidatePath("/admin/products");
     revalidatePath("/admin/inventory");
+    revalidateStorefrontCatalogue();
     redirect(`/admin/products/${product.id}`);
   } catch (error) {
     if (
@@ -197,6 +199,7 @@ export async function updateProductAction(
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${parsed.data.productId}`);
   revalidatePath("/products", "layout");
+  revalidateStorefrontCatalogue();
   return { ok: true };
 }
 
@@ -257,6 +260,7 @@ export async function addColourAction(
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${parsed.data.productId}`);
   revalidatePath("/admin/inventory");
+  revalidateStorefrontCatalogue();
   return { ok: true };
 }
 
@@ -283,5 +287,6 @@ export async function updateVariantStatusAction(
   revalidatePath("/admin/products");
   revalidatePath("/admin/inventory");
   revalidatePath("/products", "layout");
+  revalidateStorefrontCatalogue();
   return { ok: true };
 }
