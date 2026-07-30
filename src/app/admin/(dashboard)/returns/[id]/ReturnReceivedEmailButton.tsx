@@ -12,10 +12,12 @@ export function ReturnReceivedEmailButton({
   returnId,
   hasReceivedAt,
   priorSendCount,
+  emailConfigured = true,
 }: {
   returnId: string;
   hasReceivedAt: boolean;
   priorSendCount: number;
+  emailConfigured?: boolean;
 }) {
   const [state, action, pending] = useActionState(
     sendReturnReceivedEmailAction,
@@ -35,8 +37,12 @@ export function ReturnReceivedEmailButton({
       {priorSendCount === 0 ? (
         <form action={action}>
           <input type="hidden" name="returnId" value={returnId} />
-          <button type="submit" disabled={pending}>
-            {pending ? "Sending…" : "Send return-received email"}
+          <button type="submit" disabled={pending || !emailConfigured}>
+            {pending
+              ? "Sending…"
+              : emailConfigured
+                ? "Send return-received email"
+                : "Send return-received email (email not configured)"}
           </button>
         </form>
       ) : (
@@ -57,8 +63,12 @@ export function ReturnReceivedEmailButton({
               <input type="checkbox" name="confirmResend" value="yes" required />
               Confirm re-send
             </label>
-            <button type="submit" disabled={pending}>
-              {pending ? "Sending…" : "Re-send return-received email"}
+            <button type="submit" disabled={pending || !emailConfigured}>
+              {pending
+                ? "Sending…"
+                : emailConfigured
+                  ? "Re-send return-received email"
+                  : "Re-send return-received email (email not configured)"}
             </button>
           </form>
         </details>

@@ -6,6 +6,11 @@ import {
   canShowExchangeShipmentForm,
   getReturnForAdmin,
 } from "@/lib/commerce/returns-service";
+import {
+  getAdminEmailStatus,
+  listReturnEmailHistory,
+} from "@/lib/admin/email-status";
+import { AdminEmailStatusPanel } from "@/components/admin/AdminEmailStatusPanel";
 import { ExchangeShipmentPanel } from "./ExchangeShipmentPanel";
 import { ReturnReceivedEmailButton } from "./ReturnReceivedEmailButton";
 import { ReturnStatusForm } from "./ReturnStatusForm";
@@ -37,6 +42,8 @@ export default async function AdminReturnDetailPage({
       action: "return.received_email_sent",
     },
   });
+  const emailStatus = getAdminEmailStatus();
+  const emailHistory = await listReturnEmailHistory(entry.id);
 
   return (
     <>
@@ -151,12 +158,19 @@ export default async function AdminReturnDetailPage({
         />
       ) : null}
 
+      <AdminEmailStatusPanel
+        configured={emailStatus.configured}
+        fromAddress={emailStatus.fromAddress}
+        history={emailHistory}
+      />
+
       <section className={styles.panel}>
-        <h2>Customer email</h2>
+        <h2>Notify customer</h2>
         <ReturnReceivedEmailButton
           returnId={entry.id}
           hasReceivedAt={Boolean(entry.receivedAt)}
           priorSendCount={returnEmailSends}
+          emailConfigured={emailStatus.configured}
         />
       </section>
 

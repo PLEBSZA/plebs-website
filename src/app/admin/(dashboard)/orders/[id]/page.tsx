@@ -3,6 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminSession } from "@/lib/admin/dal";
 import { getCompleteOrderBlocker } from "@/lib/commerce/fulfilment-service";
+import {
+  getAdminEmailStatus,
+  listOrderEmailHistory,
+} from "@/lib/admin/email-status";
+import { AdminEmailStatusPanel } from "@/components/admin/AdminEmailStatusPanel";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { OrderActionsPanel } from "./OrderActionsPanel";
@@ -59,6 +64,8 @@ export default async function AdminOrderDetailPage({
     orderBy: { createdAt: "desc" },
   });
   const lastTrackingEmail = trackingEmailEvents[0];
+  const emailStatus = getAdminEmailStatus();
+  const emailHistory = await listOrderEmailHistory(order.id);
 
   return (
     <>
@@ -256,12 +263,19 @@ export default async function AdminOrderDetailPage({
         </section>
       )}
 
+      <AdminEmailStatusPanel
+        configured={emailStatus.configured}
+        fromAddress={emailStatus.fromAddress}
+        history={emailHistory}
+      />
+
       <OrderActionsPanel
         orderId={order.id}
         status={order.status}
         paymentStatus={order.paymentStatus}
         fulfilmentStatus={order.fulfilmentStatus}
         completeBlocker={completeBlocker}
+        emailConfigured={emailStatus.configured}
         tracking={
           latestFulfilment
             ? {

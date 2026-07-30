@@ -25,6 +25,7 @@ type Props = {
   paymentStatus: string;
   fulfilmentStatus: string;
   completeBlocker: string | null;
+  emailConfigured?: boolean;
   tracking?: {
     courier?: string | null;
     trackingNumber?: string | null;
@@ -46,6 +47,7 @@ export function OrderActionsPanel({
   paymentStatus,
   fulfilmentStatus,
   completeBlocker,
+  emailConfigured = true,
   tracking,
   items,
 }: Props) {
@@ -223,8 +225,20 @@ export function OrderActionsPanel({
               {notificationCount === 0 ? (
                 <form action={emailAction}>
                   <input type="hidden" name="orderId" value={orderId} />
-                  <button type="submit" disabled={sendingEmail}>
-                    {sendingEmail ? "Sending…" : "Send tracking email"}
+                  <button
+                    type="submit"
+                    disabled={sendingEmail || !emailConfigured}
+                    title={
+                      emailConfigured
+                        ? undefined
+                        : "Email is not configured"
+                    }
+                  >
+                    {sendingEmail
+                      ? "Sending…"
+                      : emailConfigured
+                        ? "Send tracking email"
+                        : "Send tracking email (email not configured)"}
                   </button>
                 </form>
               ) : (
@@ -250,8 +264,20 @@ export function OrderActionsPanel({
                       />
                       Confirm re-send with the current tracking details
                     </label>
-                    <button type="submit" disabled={sendingEmail}>
-                      {sendingEmail ? "Sending…" : "Re-send tracking email"}
+                    <button
+                      type="submit"
+                      disabled={sendingEmail || !emailConfigured}
+                      title={
+                        emailConfigured
+                          ? undefined
+                          : "Email is not configured"
+                      }
+                    >
+                      {sendingEmail
+                        ? "Sending…"
+                        : emailConfigured
+                          ? "Re-send tracking email"
+                          : "Re-send tracking email (email not configured)"}
                     </button>
                   </form>
                 </details>
@@ -340,10 +366,18 @@ export function OrderActionsPanel({
                 />
                 Confirm send / re-send
               </label>
-              <button type="submit" disabled={sendingDeliveryEmail}>
+              <button
+                type="submit"
+                disabled={sendingDeliveryEmail || !emailConfigured}
+                title={
+                  emailConfigured ? undefined : "Email is not configured"
+                }
+              >
                 {sendingDeliveryEmail
                   ? "Sending…"
-                  : "Send delivery email to customer"}
+                  : emailConfigured
+                    ? "Send delivery email to customer"
+                    : "Send delivery email (email not configured)"}
               </button>
             </form>
             {deliveryEmailState.error && (
