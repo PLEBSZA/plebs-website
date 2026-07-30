@@ -18,13 +18,14 @@
 
 | Prompt | Commit | Issues |
 | --- | --- | --- |
-| PLEBS-PERF-001 | `37f8340` | SPEED-07 |
-| PLEBS-PERF-002 | `4b6467e` | SPEED-01 |
+| PLEBS-PERF-001 | `37f8340` (+ Windows harness fix in QA) | SPEED-07 |
+| PLEBS-PERF-002 | `4b6467e` (+ Suspense CLS fix in QA) | SPEED-01 |
 | PLEBS-PERF-003 | `61994e6` | SPEED-02 |
-| PLEBS-PERF-004 | `a134f89` | SPEED-03 |
+| PLEBS-PERF-004 | `a134f89` (+ explicit `fetchPriority` in QA) | SPEED-03 |
 | PLEBS-PERF-005 | `4917f16` | SPEED-04 |
 | PLEBS-PERF-006 | `3a74804` | SPEED-05 |
-| PLEBS-PERF-007 | report only | SPEED-06 |
+| PLEBS-PERF-007 | report only (`docs/performance-ga4-decision.md`) | SPEED-06 |
+| PLEBS-PERF-QA | `ed90e62` | CLS / LCP / harness |
 
 ## Build classification (after PERF-002+)
 
@@ -36,17 +37,32 @@ Content routes prerender as **○ Static** (1m revalidate / 1h expire from catal
 
 `.next/prerender-manifest.json` lists the content routes (pass signal for SPEED-01).
 
+## Lab deltas (local proxy — not Vercel preview)
+
+| | Before | After (spot checks) |
+| --- | --- | --- |
+| Prerender content routes | none | yes |
+| Home TTFB (lab, local static) | multi-second dynamic | ~10 ms |
+| Home CLS | 0 | **0** (after removing site-wide Suspense hole) |
+| Home images | ~629 KiB | ~310 KiB (still above 250 KiB gate) |
+| PDP `fetchpriority` | missing | `fetchPriority="high"` on gallery LCP img |
+| GA4 in lab | absent in old audits | ~167 KiB gtag when ID set |
+
+**Regression caught in QA:** wrapping all `(site)` children in `<Suspense fallback={null}>` caused CLS ≈ 0.8. Suspense is now only on `/checkout/review` and `/order-confirmation`.
+
+**Next 16 note:** `priority` preloads the image but does **not** set `fetchPriority="high"`; both are required for Lighthouse `priorityHinted`.
+
 ## Measurement notes
 
-- Baseline `perf-baseline/2026-07-30-local-proxy.json` is a **local `next start` proxy**, not a Vercel preview (gh unavailable at capture time).
-- Production (live) still sends `Cache-Control: no-store` until this branch is deployed — expected.
-- Re-measure with: `PERF_BASE_URL=<preview> npm run perf` then `npm run perf:check`.
-- Lab gates are diagnostics; **CrUX p75 over 28 days** remains the real CWV verdict.
+- Baseline `perf-baseline/2026-07-30-local-proxy.json` is a **local `next start` proxy**, not a Vercel preview.
+- Production still sends `Cache-Control: no-store` until this branch is deployed.
+- Re-measure: `PERF_BASE_URL=<preview> npm run perf` then `npm run perf:check`.
+- Lab gates are diagnostics; **CrUX p75 over 28 days** is the real CWV verdict.
 
 ## Outstanding owner decisions
 
 1. GA4 model (a/b/c) — `docs/performance-ga4-decision.md`
-2. Confirm production SHA / that Cookie Settings divergence is closed
+2. Confirm production SHA (Cookie Settings divergence appears closed as of 2026-07-30)
 3. Accept Cache Components site-wide (recommended; already implemented locally)
 4. Revalidation window for price/stock (`minutes` vs tighter)
 5. Image `minimumCacheTTL` 30d vs shorter
@@ -60,3 +76,4 @@ Content routes prerender as **○ Static** (1m revalidate / 1h expire from catal
 - No accessibility opportunistic fixes
 - No admin feature work beyond storefront cache invalidation hooks
 - GA4 strategy not switched
+- Homepage ≤250 KiB image gate not fully met on local (wordmark + hero + picnic + 2 slides)
