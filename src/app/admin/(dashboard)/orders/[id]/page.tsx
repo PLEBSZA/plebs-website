@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminSession } from "@/lib/admin/dal";
+import { getCompleteOrderBlocker } from "@/lib/commerce/fulfilment-service";
 import { db } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { OrderActionsPanel } from "./OrderActionsPanel";
@@ -16,7 +17,7 @@ export default async function AdminOrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireAdminSession("orders:read");
+  await requireAdminSession("orders:read");
   const { id } = await params;
   const order = await db.order.findUnique({
     where: { id },
@@ -41,6 +42,12 @@ export default async function AdminOrderDetailPage({
   };
 
   const latestFulfilment = order.fulfilments[0];
+  const completeBlocker = getCompleteOrderBlocker(order);
+  const formatStamp = (value: Date) =>
+    new Intl.DateTimeFormat("en-ZA", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(value);
 
   return (
     <>
@@ -150,9 +157,11 @@ export default async function AdminOrderDetailPage({
         )}
       </section>
 
-      {latestFulfilment?.courier && (
-        <section className={styles.panel}>
-          <h2>Fulfilment & tracking</h2>
+      <section className={styles.panel}>
+        <h2>Fulfilment & tracking</h2>
+        {!latestFulfilment ? (
+          <p className={styles.empty}>No fulfilment record yet.</p>
+        ) : (
           <table className={styles.table}>
             <tbody>
               <tr>
@@ -161,44 +170,50 @@ export default async function AdminOrderDetailPage({
               </tr>
               <tr>
                 <th scope="row">Courier</th>
-                <td>{latestFulfilment.courier ?? "—"}</td>
+                <td>{latestFulfilment.courier ?? "No tracking captured yet"}</td>
               </tr>
               <tr>
                 <th scope="row">Tracking #</th>
                 <td>
-                  {latestFulfilment.trackingUrl ? (
-                    <a
-                      href={latestFulfilment.trackingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {latestFulfilment.trackingNumber}
-                    </a>
+                  {latestFulfilment.trackingNumber ? (
+                    latestFulfilment.trackingUrl ? (
+                      <a
+                        href={latestFulfilment.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {latestFulfilment.trackingNumber}
+                      </a>
+                    ) : (
+                      latestFulfilment.trackingNumber
+                    )
                   ) : (
-                    latestFulfilment.trackingNumber ?? "—"
+                    "No tracking captured yet"
                   )}
                 </td>
               </tr>
               {latestFulfilment.packedAt && (
                 <tr>
                   <th scope="row">Packed</th>
-                  <td>
-                    {new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium", timeStyle: "short" }).format(latestFulfilment.packedAt)}
-                  </td>
+                  <td>{formatStamp(latestFulfilment.packedAt)}</td>
                 </tr>
               )}
               {latestFulfilment.dispatchedAt && (
                 <tr>
                   <th scope="row">Dispatched</th>
-                  <td>
-                    {new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium", timeStyle: "short" }).format(latestFulfilment.dispatchedAt)}
-                  </td>
+                  <td>{formatStamp(latestFulfilment.dispatchedAt)}</td>
+                </tr>
+              )}
+              {latestFulfilment.deliveredAt && (
+                <tr>
+                  <th scope="row">Delivered</th>
+                  <td>{formatStamp(latestFulfilment.deliveredAt)}</td>
                 </tr>
               )}
             </tbody>
           </table>
-        </section>
-      )}
+        )}
+      </section>
 
       {order.returnRequests.length > 0 && (
         <section className={styles.panel}>
@@ -235,6 +250,7 @@ export default async function AdminOrderDetailPage({
         status={order.status}
         paymentStatus={order.paymentStatus}
         fulfilmentStatus={order.fulfilmentStatus}
+        completeBlocker={completeBlocker}
         items={order.items.map((item) => ({
           id: item.id,
           sku: item.sku,

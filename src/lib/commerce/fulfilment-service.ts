@@ -4,6 +4,7 @@ import {
   FulfilmentStatus,
   OrderStatus,
   PaymentStatus,
+  ReturnStatus,
 } from "@/generated/prisma/client";
 import { recordAuditEvent } from "@/lib/admin/audit";
 import {
@@ -23,6 +24,7 @@ async function upsertFulfilment(
     fulfilledById?: string;
     fulfilledAt?: Date;
     dispatchedAt?: Date;
+    deliveredAt?: Date;
     courier?: string | null;
     trackingNumber?: string | null;
     trackingUrl?: string | null;
@@ -47,6 +49,37 @@ async function upsertFulfilment(
       ...data,
     },
   });
+}
+
+const TERMINAL_RETURN_STATUSES = new Set<ReturnStatus>([
+  ReturnStatus.CLOSED,
+  ReturnStatus.REJECTED,
+  ReturnStatus.REFUNDED,
+]);
+
+export type CompleteOrderResult =
+  | { ok: true }
+  | { ok: false; reason: string };
+
+export function getCompleteOrderBlocker(order: {
+  paymentStatus: PaymentStatus;
+  fulfilmentStatus: FulfilmentStatus;
+  returnRequests: { id: string; reference?: string | null; status: ReturnStatus }[];
+}): string | null {
+  if (order.paymentStatus !== PaymentStatus.PAID) {
+    return "Not yet paid";
+  }
+  if (order.fulfilmentStatus !== FulfilmentStatus.DELIVERED) {
+    return "Not yet delivered";
+  }
+  const openReturn = order.returnRequests.find(
+    (entry) => !TERMINAL_RETURN_STATUSES.has(entry.status),
+  );
+  if (openReturn) {
+    const label = openReturn.reference ?? openReturn.id.slice(0, 8);
+    return `Waiting on return ${label}`;
+  }
+  return null;
 }
 
 export async function markOrderPaid(input: {
@@ -231,12 +264,11 @@ export async function fulfilOrder(input: {
     internalNote: input.note?.trim() || null,
   });
 
+  // Stay OPEN after dispatch — parcel is still in transit (ISSUE-01).
   await db.order.update({
     where: { id: order.id },
     data: {
       fulfilmentStatus: FulfilmentStatus.FULFILLED,
-      status: OrderStatus.COMPLETED,
-      completedAt: new Date(),
     },
   });
 
@@ -263,6 +295,158 @@ export async function fulfilOrder(input: {
   return fulfilment;
 }
 
+export async function markOrderDelivered(input: {
+  orderId: string;
+  userId?: string;
+  deliveredAt?: Date;
+  note?: string;
+}) {
+  const order = await db.order.findUniqueOrThrow({
+    where: { id: input.orderId },
+    include: {
+      fulfilments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+
+  if (order.status === OrderStatus.CANCELLED) {
+    throw new Error("Cancelled orders cannot be marked delivered.");
+  }
+
+  if (order.fulfilmentStatus === FulfilmentStatus.DELIVERED) {
+    return order.fulfilments[0] ?? null;
+  }
+
+  if (order.fulfilmentStatus !== FulfilmentStatus.FULFILLED) {
+    throw new Error("Only fulfilled (in-transit) orders can be marked delivered.");
+  }
+
+  const existing = order.fulfilments[0];
+  const deliveredAt = input.deliveredAt ?? new Date();
+  const now = new Date();
+
+  if (deliveredAt.getTime() > now.getTime()) {
+    throw new Error("Delivered date cannot be in the future.");
+  }
+  if (existing?.dispatchedAt && deliveredAt.getTime() < existing.dispatchedAt.getTime()) {
+    throw new Error("Delivered date cannot be earlier than the dispatch date.");
+  }
+
+  const note = input.note?.trim();
+  const internalNote = note
+    ? [existing?.internalNote, note].filter(Boolean).join("\n")
+    : existing?.internalNote ?? null;
+
+  const fulfilment = await upsertFulfilment(order.id, {
+    status: FulfilmentStatus.DELIVERED,
+    deliveredAt,
+    internalNote,
+  });
+
+  await db.order.update({
+    where: { id: order.id },
+    data: { fulfilmentStatus: FulfilmentStatus.DELIVERED },
+  });
+
+  await recordAuditEvent({
+    actorId: input.userId,
+    action: "order.delivered",
+    entityType: "order",
+    entityId: order.id,
+    afterState: { deliveredAt: deliveredAt.toISOString() },
+  });
+
+  return fulfilment;
+}
+
+export async function completeOrder(input: {
+  orderId: string;
+  userId?: string;
+  reason?: string;
+}): Promise<CompleteOrderResult> {
+  const order = await db.order.findUniqueOrThrow({
+    where: { id: input.orderId },
+    include: { returnRequests: true },
+  });
+
+  if (order.status === OrderStatus.CANCELLED) {
+    return { ok: false, reason: "Cancelled orders cannot be completed." };
+  }
+
+  if (order.status === OrderStatus.COMPLETED) {
+    return { ok: true };
+  }
+
+  const blocker = getCompleteOrderBlocker(order);
+  if (blocker) {
+    return { ok: false, reason: blocker };
+  }
+
+  await db.order.update({
+    where: { id: order.id },
+    data: {
+      status: OrderStatus.COMPLETED,
+      completedAt: new Date(),
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: input.userId,
+    action: "order.completed",
+    entityType: "order",
+    entityId: order.id,
+    reason: input.reason,
+    afterState: { status: OrderStatus.COMPLETED },
+  });
+
+  return { ok: true };
+}
+
+export async function reopenOrder(input: {
+  orderId: string;
+  userId: string;
+  reason: string;
+}) {
+  const reason = input.reason.trim();
+  if (!reason) {
+    throw new Error("A reason is required to reopen an order.");
+  }
+
+  const order = await db.order.findUniqueOrThrow({
+    where: { id: input.orderId },
+  });
+
+  if (order.status === OrderStatus.CANCELLED) {
+    throw new Error("Cancelled orders cannot be reopened.");
+  }
+
+  if (order.status === OrderStatus.OPEN && order.completedAt == null) {
+    return order;
+  }
+
+  const updated = await db.order.update({
+    where: { id: order.id },
+    data: {
+      status: OrderStatus.OPEN,
+      completedAt: null,
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: input.userId,
+    action: "order.reopened",
+    entityType: "order",
+    entityId: order.id,
+    reason,
+    beforeState: {
+      status: order.status,
+      completedAt: order.completedAt?.toISOString() ?? null,
+    },
+    afterState: { status: OrderStatus.OPEN, completedAt: null },
+  });
+
+  return updated;
+}
+
 export async function cancelOrderAdmin(input: {
   orderId: string;
   userId: string;
@@ -273,9 +457,12 @@ export async function cancelOrderAdmin(input: {
   });
 
   if (order.status === OrderStatus.CANCELLED) return order;
-  if (order.fulfilmentStatus === FulfilmentStatus.FULFILLED) {
+  if (
+    order.fulfilmentStatus === FulfilmentStatus.FULFILLED ||
+    order.fulfilmentStatus === FulfilmentStatus.DELIVERED
+  ) {
     throw new Error(
-      "Fulfilled orders cannot be cancelled. Create a return instead.",
+      "Fulfilled or delivered orders cannot be cancelled. Create a return instead.",
     );
   }
 

@@ -7,6 +7,9 @@ import {
   markOrderPacked,
   fulfilOrder,
   cancelOrderAdmin,
+  markOrderDelivered,
+  completeOrder,
+  reopenOrder,
 } from "@/lib/commerce/fulfilment-service";
 
 export type FulfilmentActionState = {
@@ -101,5 +104,117 @@ export async function cancelOrderAction(
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   revalidatePath("/admin/inventory");
+  return { ok: true };
+}
+
+const deliveredSchema = z.object({
+  orderId: z.string().min(1),
+  deliveredAt: z.string().optional(),
+  note: z.string().optional(),
+});
+
+export async function markDeliveredAction(
+  _prev: FulfilmentActionState,
+  formData: FormData,
+): Promise<FulfilmentActionState> {
+  const user = await requireAdminSession("orders:fulfil");
+  const parsed = deliveredSchema.safeParse({
+    orderId: formData.get("orderId"),
+    deliveredAt: formData.get("deliveredAt") || undefined,
+    note: formData.get("note") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: "Missing order." };
+  }
+
+  let deliveredAt: Date | undefined;
+  if (parsed.data.deliveredAt) {
+    deliveredAt = new Date(parsed.data.deliveredAt);
+    if (Number.isNaN(deliveredAt.getTime())) {
+      return { error: "Invalid delivered date." };
+    }
+  }
+
+  try {
+    await markOrderDelivered({
+      orderId: parsed.data.orderId,
+      userId: user.id,
+      deliveredAt,
+      note: parsed.data.note,
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to mark order delivered.",
+    };
+  }
+
+  revalidatePath(`/admin/orders/${parsed.data.orderId}`);
+  revalidatePath("/admin/orders");
+  return { ok: true };
+}
+
+export async function completeOrderAction(
+  _prev: FulfilmentActionState,
+  formData: FormData,
+): Promise<FulfilmentActionState> {
+  const user = await requireAdminSession("orders:fulfil");
+  const orderId = String(formData.get("orderId") ?? "");
+  const reason = String(formData.get("reason") ?? "") || undefined;
+
+  if (!orderId) return { error: "Missing order." };
+
+  const result = await completeOrder({
+    orderId,
+    userId: user.id,
+    reason,
+  });
+
+  if (!result.ok) {
+    return { error: result.reason };
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  return { ok: true };
+}
+
+const reopenSchema = z.object({
+  orderId: z.string().min(1),
+  reason: z.string().min(1),
+});
+
+export async function reopenOrderAction(
+  _prev: FulfilmentActionState,
+  formData: FormData,
+): Promise<FulfilmentActionState> {
+  const user = await requireAdminSession("orders:fulfil");
+  const parsed = reopenSchema.safeParse({
+    orderId: formData.get("orderId"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) {
+    return { error: "A reason is required to reopen an order." };
+  }
+
+  try {
+    await reopenOrder({
+      orderId: parsed.data.orderId,
+      userId: user.id,
+      reason: parsed.data.reason,
+    });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Unable to reopen order.",
+    };
+  }
+
+  revalidatePath(`/admin/orders/${parsed.data.orderId}`);
+  revalidatePath("/admin/orders");
   return { ok: true };
 }

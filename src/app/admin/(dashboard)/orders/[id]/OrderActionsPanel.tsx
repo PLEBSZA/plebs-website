@@ -5,6 +5,9 @@ import {
   packOrderAction,
   fulfilOrderAction,
   cancelOrderAction,
+  markDeliveredAction,
+  completeOrderAction,
+  reopenOrderAction,
   type FulfilmentActionState,
 } from "@/app/admin/actions/fulfilment";
 import {
@@ -17,6 +20,7 @@ type Props = {
   status: string;
   paymentStatus: string;
   fulfilmentStatus: string;
+  completeBlocker: string | null;
   items: { id: string; sku: string; colour: string; size: string }[];
 };
 
@@ -28,6 +32,7 @@ export function OrderActionsPanel({
   status,
   paymentStatus,
   fulfilmentStatus,
+  completeBlocker,
   items,
 }: Props) {
   const [packState, packAction, packing] = useActionState(
@@ -42,15 +47,31 @@ export function OrderActionsPanel({
     cancelOrderAction,
     initialFulfilment,
   );
+  const [deliveredState, deliveredAction, delivering] = useActionState(
+    markDeliveredAction,
+    initialFulfilment,
+  );
+  const [completeState, completeAction, completing] = useActionState(
+    completeOrderAction,
+    initialFulfilment,
+  );
+  const [reopenState, reopenAction, reopening] = useActionState(
+    reopenOrderAction,
+    initialFulfilment,
+  );
   const [returnState, returnAction, returningPending] = useActionState(
     createReturnAction,
     initialReturn,
   );
 
   const isCancelled = status === "CANCELLED";
+  const isCompleted = status === "COMPLETED";
   const isPaid = paymentStatus === "PAID";
   const isFulfilled = fulfilmentStatus === "FULFILLED";
+  const isDelivered = fulfilmentStatus === "DELIVERED";
   const isPacked = fulfilmentStatus === "PACKED";
+  // Widened to DELIVERED/RETURNED in PLEBS-ORDERS-002.
+  const canCreateReturn = isFulfilled;
 
   return (
     <section
@@ -64,7 +85,7 @@ export function OrderActionsPanel({
     >
       <h2>Actions</h2>
 
-      {!isCancelled && isPaid && !isPacked && !isFulfilled && (
+      {!isCancelled && isPaid && !isPacked && !isFulfilled && !isDelivered && (
         <div style={{ marginBottom: "var(--space-3)" }}>
           <form action={packAction} style={{ display: "inline" }}>
             <input type="hidden" name="orderId" value={orderId} />
@@ -83,16 +104,41 @@ export function OrderActionsPanel({
         </div>
       )}
 
-      {!isCancelled && isPaid && !isFulfilled && (
+      {!isCancelled && isPaid && !isFulfilled && !isDelivered && (
         <div style={{ marginBottom: "var(--space-3)" }}>
           <form action={fulfilAction}>
             <input type="hidden" name="orderId" value={orderId} />
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
-              <input name="courier" placeholder="Courier name" required style={{ flex: 1, minWidth: "10rem" }} />
-              <input name="trackingNumber" placeholder="Tracking number" required style={{ flex: 1, minWidth: "10rem" }} />
-              <input name="trackingUrl" placeholder="Tracking URL (optional)" style={{ flex: 1, minWidth: "10rem" }} />
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                flexWrap: "wrap",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <input
+                name="courier"
+                placeholder="Courier name"
+                required
+                style={{ flex: 1, minWidth: "10rem" }}
+              />
+              <input
+                name="trackingNumber"
+                placeholder="Tracking number"
+                required
+                style={{ flex: 1, minWidth: "10rem" }}
+              />
+              <input
+                name="trackingUrl"
+                placeholder="Tracking URL (optional)"
+                style={{ flex: 1, minWidth: "10rem" }}
+              />
             </div>
-            <input name="note" placeholder="Internal note (optional)" style={{ width: "100%", marginBottom: "0.5rem" }} />
+            <input
+              name="note"
+              placeholder="Internal note (optional)"
+              style={{ width: "100%", marginBottom: "0.5rem" }}
+            />
             <button type="submit" disabled={fulfilling}>
               {fulfilling ? "Fulfilling…" : "Mark as fulfilled"}
             </button>
@@ -110,30 +156,141 @@ export function OrderActionsPanel({
         </div>
       )}
 
-      {!isCancelled && !isFulfilled && (
-        <details style={{ marginBottom: "var(--space-3)" }}>
-          <summary style={{ cursor: "pointer", fontWeight: 600 }}>Cancel order</summary>
-          <form action={cancelAction} style={{ marginTop: "0.5rem" }}>
+      {!isCancelled && isFulfilled && (
+        <div style={{ marginBottom: "var(--space-3)" }}>
+          <form action={deliveredAction}>
             <input type="hidden" name="orderId" value={orderId} />
-            <input name="reason" placeholder="Reason (optional)" style={{ width: "100%", marginBottom: "0.5rem" }} />
-            <button type="submit" disabled={cancelling} style={{ color: "crimson" }}>
-              {cancelling ? "Cancelling…" : "Cancel order"}
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                flexWrap: "wrap",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <input
+                name="deliveredAt"
+                type="datetime-local"
+                title="Optional backdated delivery time"
+                style={{ flex: 1, minWidth: "12rem" }}
+              />
+              <input
+                name="note"
+                placeholder="Internal note (optional)"
+                style={{ flex: 2, minWidth: "10rem" }}
+              />
+            </div>
+            <button type="submit" disabled={delivering}>
+              {delivering ? "Saving…" : "Mark delivered"}
             </button>
           </form>
-          {cancelState.error && (
+          {deliveredState.error && (
             <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
-              {cancelState.error}
+              {deliveredState.error}
             </p>
           )}
-          {cancelState.ok && (
+          {deliveredState.ok && (
             <p style={{ color: "green", margin: "0.25rem 0 0" }}>
-              Order cancelled.
+              Delivered ✓
+            </p>
+          )}
+        </div>
+      )}
+
+      {!isCancelled && !isCompleted && (
+        <div style={{ marginBottom: "var(--space-3)" }}>
+          {completeBlocker ? (
+            <p style={{ color: "var(--color-muted)", margin: 0 }}>
+              Cannot mark complete: {completeBlocker}
+            </p>
+          ) : (
+            <form action={completeAction} style={{ display: "inline" }}>
+              <input type="hidden" name="orderId" value={orderId} />
+              <button type="submit" disabled={completing}>
+                {completing ? "Completing…" : "Mark complete"}
+              </button>
+            </form>
+          )}
+          {completeState.error && (
+            <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
+              {completeState.error}
+            </p>
+          )}
+          {completeState.ok && (
+            <p style={{ color: "green", margin: "0.25rem 0 0" }}>
+              Completed ✓
+            </p>
+          )}
+        </div>
+      )}
+
+      {!isCancelled && isCompleted && (
+        <details style={{ marginBottom: "var(--space-3)" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Reopen order
+          </summary>
+          <form action={reopenAction} style={{ marginTop: "0.5rem" }}>
+            <input type="hidden" name="orderId" value={orderId} />
+            <input
+              name="reason"
+              placeholder="Reason (required)"
+              required
+              style={{ width: "100%", marginBottom: "0.5rem" }}
+            />
+            <button type="submit" disabled={reopening}>
+              {reopening ? "Reopening…" : "Reopen order"}
+            </button>
+          </form>
+          {reopenState.error && (
+            <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
+              {reopenState.error}
+            </p>
+          )}
+          {reopenState.ok && (
+            <p style={{ color: "green", margin: "0.25rem 0 0" }}>
+              Order reopened.
             </p>
           )}
         </details>
       )}
 
-      {isFulfilled && items.length > 0 && (
+      {!isCancelled &&
+        !isFulfilled &&
+        !isDelivered &&
+        fulfilmentStatus !== "RETURNED" && (
+          <details style={{ marginBottom: "var(--space-3)" }}>
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+              Cancel order
+            </summary>
+            <form action={cancelAction} style={{ marginTop: "0.5rem" }}>
+              <input type="hidden" name="orderId" value={orderId} />
+              <input
+                name="reason"
+                placeholder="Reason (optional)"
+                style={{ width: "100%", marginBottom: "0.5rem" }}
+              />
+              <button
+                type="submit"
+                disabled={cancelling}
+                style={{ color: "crimson" }}
+              >
+                {cancelling ? "Cancelling…" : "Cancel order"}
+              </button>
+            </form>
+            {cancelState.error && (
+              <p style={{ color: "crimson", margin: "0.25rem 0 0" }}>
+                {cancelState.error}
+              </p>
+            )}
+            {cancelState.ok && (
+              <p style={{ color: "green", margin: "0.25rem 0 0" }}>
+                Order cancelled.
+              </p>
+            )}
+          </details>
+        )}
+
+      {canCreateReturn && items.length > 0 && (
         <details>
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
             Create return / exchange
