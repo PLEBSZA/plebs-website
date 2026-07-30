@@ -105,6 +105,7 @@
 .media {
   grid-area: media;
   width: 100%;
+  max-height: min(32rem, 68vh);
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-sand);
@@ -113,8 +114,9 @@
 .image {
   display: block;
   width: 100%;
-  height: auto;
-  aspect-ratio: 1587 / 1710;
+  height: 100%;
+  max-height: min(32rem, 68vh);
+  aspect-ratio: 5 / 6;
   object-fit: cover;
-  object-position: 50% 42%;
+  object-position: 50% 30%;
 }

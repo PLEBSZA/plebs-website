@@ -33,6 +33,7 @@ export default async function AdminOrderDetailPage({
   const shipping = order.shippingAddress as {
     line1: string;
     line2?: string;
+    suburb?: string;
     city: string;
     province: string;
     postalCode: string;
@@ -78,6 +79,12 @@ export default async function AdminOrderDetailPage({
                 {shipping.line1}
                 {shipping.line2 ? `, ${shipping.line2}` : ""}
                 <br />
+                {shipping.suburb ? (
+                  <>
+                    {shipping.suburb}
+                    <br />
+                  </>
+                ) : null}
                 {shipping.city}, {shipping.province} {shipping.postalCode}
                 <br />
                 {shipping.country}

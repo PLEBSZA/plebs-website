@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     shippingAddress: {
       line1: body.shippingLine1 ?? "",
       line2: body.shippingLine2,
+      suburb: body.shippingSuburb ?? "",
       city: body.shippingCity ?? "",
       province: body.shippingProvince ?? "",
       postalCode: body.shippingPostalCode ?? "",
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
       : {
           line1: body.billingLine1 ?? "",
           line2: body.billingLine2,
+          suburb: body.billingSuburb ?? "",
           city: body.billingCity ?? "",
           province: body.billingProvince ?? "",
           postalCode: body.billingPostalCode ?? "",

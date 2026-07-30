@@ -8,13 +8,13 @@ served.
 
 | Supplied source | Production asset | Purpose |
 | --- | --- | --- |
-| `PLEB.webp` | `public/images/products/cotton-corduroy-dungarees/plebs-campaign-editorial.webp` | Cropped campaign portrait; removes the old PLEB text treatment |
+| `hero.webp` | `public/images/products/cotton-corduroy-dungarees/plebs-campaign-editorial.webp` | Primary homepage/product hero; forest green corduroy with PLEBS label |
 | `PLEB_2.webp` | `public/images/products/cotton-corduroy-dungarees/plebs-picnic-lifestyle.webp` | Outdoor picnic lifestyle view |
 | `PLEB_3.webp` | `public/images/products/cotton-corduroy-dungarees/plebs-picnic-sharing.webp` | Alternate outdoor campaign view |
 | `2 (1) SVG LOGO.txt` | `public/images/brand/plebs-logo.svg` | Sanitised PLEBS signature logo |
 | `2 (1) SVG LOGO.txt` | `public/images/brand/plebs-wordmark.svg` | Sanitised PLEBS wordmark |
-| Campaign photographs and wordmark | `public/images/social/plebs-og-default.webp` | Default 1200×630 social card |
-| Campaign photographs and wordmark | `public/images/social/plebs-og-product.webp` | Product 1200×630 social card |
+| `PLEB_2.webp` and wordmark | `public/images/social/plebs-og-default.webp` | Default 1200×630 social card |
+| `hero.webp` and wordmark | `public/images/social/plebs-og-product.webp` | Product 1200×630 social card |
 
 The supplied SVG contained five paths: four wordmark letters spelling PLEB and
 one path containing the tagline. The production logo preserves every supplied

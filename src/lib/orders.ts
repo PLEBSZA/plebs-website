@@ -38,6 +38,7 @@ function readCheckoutToken(metadata: unknown) {
 export type OrderAddress = {
   line1: string;
   line2?: string;
+  suburb: string;
   city: string;
   province: string;
   postalCode: string;
@@ -98,6 +99,7 @@ export async function createOrder(input: CreateOrderInput) {
     const shippingAddress = {
       line1: requireText(input.shippingAddress.line1, "Address"),
       line2: input.shippingAddress.line2?.trim() || undefined,
+      suburb: requireText(input.shippingAddress.suburb, "Suburb"),
       city: requireText(input.shippingAddress.city, "City"),
       province: requireText(input.shippingAddress.province, "Province"),
       postalCode: validatePostalCode(
@@ -111,6 +113,7 @@ export async function createOrder(input: CreateOrderInput) {
       : {
           line1: requireText(input.billingAddress?.line1, "Billing address"),
           line2: input.billingAddress?.line2?.trim() || undefined,
+          suburb: requireText(input.billingAddress?.suburb, "Billing suburb"),
           city: requireText(input.billingAddress?.city, "Billing city"),
           province: requireText(
             input.billingAddress?.province,

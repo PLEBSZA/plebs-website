@@ -25,7 +25,7 @@
   max-height: 36rem;
   border-radius: var(--radius-md);
   object-fit: cover;
-  object-position: 50% 42%;
+  object-position: 50% 30%;
 }
 
 .section {

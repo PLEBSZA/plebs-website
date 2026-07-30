@@ -26,13 +26,13 @@ export const cottonCorduroyDungareeImages = [
   {
     id: "campaign-editorial",
     src: `${productBase}/plebs-campaign-editorial.webp`,
-    width: 1587,
-    height: 1710,
-    alt: "Two people wearing green PLEBS cotton corduroy dungarees in an editorial indoor setting.",
+    width: 1200,
+    height: 1440,
+    alt: "Forest green PLEBS cotton corduroy dungarees draped over a light chair, showing the mid-wale rib texture and woven PLEBS label.",
     role: "primary",
     colourId: "forest-green",
-    objectPosition: "50% 42%",
-    caption: "The PLEBS cotton corduroy dungarees styled in an editorial setting.",
+    objectPosition: "50% 30%",
+    caption: "Forest green cotton corduroy dungarees with the PLEBS label in close detail.",
   },
   {
     id: "picnic-lifestyle",
@@ -198,12 +198,12 @@ export const brandMedia = {
     src: "/images/social/plebs-og-default.webp",
     width: 1200,
     height: 630,
-    alt: "PLEBS 100% Cotton Corduroy Dungarees",
+    alt: "PLEBS forest green 100% cotton corduroy dungarees with woven brand label",
   },
   socialProduct: {
     src: "/images/social/plebs-og-product.webp",
     width: 1200,
     height: 630,
-    alt: "PLEBS 100% Cotton Corduroy Dungarees",
+    alt: "PLEBS forest green 100% cotton corduroy dungarees with woven brand label",
   },
 } as const;

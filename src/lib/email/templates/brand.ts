@@ -27,9 +27,9 @@ export const emailBrand = {
     },
     product: {
       src: "https://www.plebs.co.za/images/email/plebs-dungarees-email.jpg",
-      width: 600,
-      height: 647,
-      alt: "Two people wearing forest green PLEBS cotton corduroy dungarees",
+      width: 900,
+      height: 1080,
+      alt: "Forest green PLEBS cotton corduroy dungarees draped over a light chair, showing the woven PLEBS label",
     },
     foldedDetail: {
       src: "https://www.plebs.co.za/images/email/plebs-corduroy-detail-email.jpg",

@@ -7,6 +7,7 @@ import { useCart } from "@/components/cart/CartProvider";
 import { formatMoney } from "@/lib/money";
 import { productData } from "@/lib/product";
 import { shippingMethods } from "@/lib/shipping";
+import { AddressAutocompleteInput } from "./AddressAutocompleteInput";
 import styles from "./CheckoutForm.module.css";
 
 type CheckoutFormProps = {
@@ -54,6 +55,7 @@ export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
           phone: data.phone,
           shippingLine1: data.shippingLine1,
           shippingLine2: data.shippingLine2,
+          shippingSuburb: data.shippingSuburb,
           shippingCity: data.shippingCity,
           shippingProvince: data.shippingProvince,
           shippingPostalCode: data.shippingPostalCode,
@@ -61,6 +63,7 @@ export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
           billingSameAsShipping: billingSame,
           billingLine1: billingSame ? undefined : data.billingLine1,
           billingLine2: billingSame ? undefined : data.billingLine2,
+          billingSuburb: billingSame ? undefined : data.billingSuburb,
           billingCity: billingSame ? undefined : data.billingCity,
           billingProvince: billingSame ? undefined : data.billingProvince,
           billingPostalCode: billingSame ? undefined : data.billingPostalCode,
@@ -151,16 +154,25 @@ export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
           <legend className={styles.legend}>Shipping Address</legend>
           <div className={styles.grid}>
             <label className={styles.field}>
-              Address
-              <input
+              Street address
+              <AddressAutocompleteInput
                 name="shippingLine1"
                 autoComplete="address-line1"
+                fieldPrefix="shipping"
                 required
               />
             </label>
             <label className={styles.field}>
               Apartment or suite (optional)
               <input name="shippingLine2" autoComplete="address-line2" />
+            </label>
+            <label className={styles.field}>
+              Suburb
+              <input
+                name="shippingSuburb"
+                autoComplete="address-level3"
+                required
+              />
             </label>
             <label className={styles.field}>
               City
@@ -233,10 +245,11 @@ export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
             <legend className={styles.legend}>Billing Address</legend>
             <div className={styles.grid}>
               <label className={styles.field}>
-                Address
-                <input
+                Street address
+                <AddressAutocompleteInput
                   name="billingLine1"
                   autoComplete="billing address-line1"
+                  fieldPrefix="billing"
                   required
                 />
               </label>
@@ -245,6 +258,14 @@ export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
                 <input
                   name="billingLine2"
                   autoComplete="billing address-line2"
+                />
+              </label>
+              <label className={styles.field}>
+                Suburb
+                <input
+                  name="billingSuburb"
+                  autoComplete="billing address-level3"
+                  required
                 />
               </label>
               <label className={styles.field}>

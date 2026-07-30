@@ -21,6 +21,7 @@ export type CheckoutReviewOrder = {
   shippingAddress: {
     line1: string;
     line2?: string;
+    suburb?: string;
     city: string;
     province: string;
     postalCode: string;
@@ -219,6 +220,9 @@ export function CheckoutReview({
           <p>{order.shippingAddress.line1}</p>
           {order.shippingAddress.line2 ? (
             <p>{order.shippingAddress.line2}</p>
+          ) : null}
+          {order.shippingAddress.suburb ? (
+            <p>{order.shippingAddress.suburb}</p>
           ) : null}
           <p>
             {order.shippingAddress.city}, {order.shippingAddress.province}{" "}
