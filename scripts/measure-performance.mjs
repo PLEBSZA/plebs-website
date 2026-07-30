@@ -145,6 +145,7 @@ function runLighthouse(url, outputPath) {
     `--output-path=${outputPath}`,
     "--quiet",
   ];
+  // Windows requires shell to resolve npx.cmd; args are fixed literals (not user input).
   const result = spawnSync(
     process.platform === "win32" ? "npx.cmd" : "npx",
     args,
@@ -152,11 +153,12 @@ function runLighthouse(url, outputPath) {
       cwd: root,
       encoding: "utf8",
       timeout: 180_000,
+      shell: process.platform === "win32",
     },
   );
   if (result.status !== 0) {
     throw new Error(
-      `Lighthouse failed for ${url}: ${result.stderr || result.stdout || result.status}`,
+      `Lighthouse failed for ${url}: ${result.stderr || result.stdout || result.error?.message || result.status}`,
     );
   }
 }

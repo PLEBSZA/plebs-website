@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { PurchaseBeacon } from "@/components/analytics/PurchaseBeacon";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -11,7 +12,7 @@ export const metadata = createPageMetadata({
   noIndex: true,
 });
 
-export default async function OrderConfirmationPage({
+async function OrderConfirmationContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -85,5 +86,26 @@ export default async function OrderConfirmationPage({
         </ul>
       </div>
     </section>
+  );
+}
+
+export default function OrderConfirmationPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <section className="section">
+          <div className="container container--reading">
+            <h1>Confirming your order</h1>
+            <p>Loading…</p>
+          </div>
+        </section>
+      }
+    >
+      <OrderConfirmationContent searchParams={searchParams} />
+    </Suspense>
   );
 }

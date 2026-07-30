@@ -1,0 +1,175 @@
+{
+  "capturedAt": "2026-07-30T11:33:17.245Z",
+  "baseUrl": "http://127.0.0.1:3010",
+  "label": "local-proxy-after",
+  "measurementKind": "local-proxy (TTFB not production-representative)",
+  "runsPerRoute": 3,
+  "formFactor": "mobile",
+  "throttlingMethod": "simulate",
+  "thresholds": {
+    "homePerformance": 0.95,
+    "pdpPerformance": 0.95,
+    "cls": 0.1,
+    "tbtMs": 150,
+    "homeSpeedIndexMs": 3000,
+    "homeImageBytes": 256000
+  },
+  "note": "Lab diagnostics only. Field gate = CrUX p75 over 28 days via PSI / Search Console.",
+  "staleLocalhostReports": ".lighthouse-home.json and .lighthouse-pdp.json (if present) were captured against localhost and must not be cited as production baselines.",
+  "prerenderManifest": {
+    "routes": [
+      "/",
+      "/_global-error",
+      "/_not-found",
+      "/about",
+      "/admin",
+      "/admin/batches",
+      "/admin/batches/new",
+      "/admin/inventory",
+      "/admin/inventory/history",
+      "/admin/login",
+      "/admin/orders",
+      "/admin/products",
+      "/admin/products/new",
+      "/admin/restock",
+      "/admin/returns",
+      "/api/inventory",
+      "/apple-icon.png",
+      "/care-guide",
+      "/checkout",
+      "/checkout/review",
+      "/contact",
+      "/cotton-corduroy",
+      "/favicon.ico",
+      "/feed.xml",
+      "/icon.svg",
+      "/order-confirmation",
+      "/privacy-policy",
+      "/products/cotton-corduroy-dungarees",
+      "/refund-policy",
+      "/robots.txt",
+      "/shipping-returns",
+      "/size-guide",
+      "/terms"
+    ],
+    "previewModeIdPresent": true
+  },
+  "responseHeaders": {
+    "/": {
+      "status": 200,
+      "cache-control": "s-maxage=60, stale-while-revalidate=3540",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/products/cotton-corduroy-dungarees/": {
+      "status": 200,
+      "cache-control": "s-maxage=60, stale-while-revalidate=3540",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/about/": {
+      "status": 200,
+      "cache-control": "s-maxage=60, stale-while-revalidate=3540",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/size-guide/": {
+      "status": 200,
+      "cache-control": "s-maxage=60, stale-while-revalidate=3540",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/shipping-returns/": {
+      "status": 200,
+      "cache-control": "s-maxage=60, stale-while-revalidate=3540",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    },
+    "/checkout/": {
+      "status": 200,
+      "cache-control": "s-maxage=60, stale-while-revalidate=3540",
+      "age": null,
+      "x-vercel-cache": null,
+      "content-encoding": "gzip",
+      "content-type": "text/html; charset=utf-8"
+    }
+  },
+  "routes": {
+    "/": {
+      "performance": 0.62,
+      "lcpMs": 4160.26925,
+      "ttfbMs": 10,
+      "speedIndexMs": 1619.8910011156747,
+      "tbtMs": 121.99999999999977,
+      "cls": 0.7945266828856183,
+      "totalBytes": 814002,
+      "imageBytes": 316642,
+      "scriptBytes": 348549
+    },
+    "/products/cotton-corduroy-dungarees/": {
+      "performance": 0.58,
+      "lcpMs": 4579.8589,
+      "ttfbMs": 14,
+      "speedIndexMs": 1822.1688057917258,
+      "tbtMs": 194.12025000000085,
+      "cls": 0.7949226688213872,
+      "totalBytes": 746162,
+      "imageBytes": 212061,
+      "scriptBytes": 350501
+    },
+    "/about/": {
+      "performance": 0.61,
+      "lcpMs": 4003.8294250000004,
+      "ttfbMs": 5,
+      "speedIndexMs": 1523.86964515814,
+      "tbtMs": 163.5,
+      "cls": 0.7949226688213872,
+      "totalBytes": 643298,
+      "imageBytes": 133086,
+      "scriptBytes": 344865
+    },
+    "/size-guide/": {
+      "performance": 0.65,
+      "lcpMs": 3683.449,
+      "ttfbMs": 7,
+      "speedIndexMs": 1471.8164038549821,
+      "tbtMs": 136.5,
+      "cls": 0.7658411223309943,
+      "totalBytes": 518155,
+      "imageBytes": 43747,
+      "scriptBytes": 342922
+    },
+    "/shipping-returns/": {
+      "performance": 0.93,
+      "lcpMs": 2978.605,
+      "ttfbMs": 5,
+      "speedIndexMs": 1365.9075,
+      "tbtMs": 119,
+      "cls": 0.0003490202653807781,
+      "totalBytes": 492533,
+      "imageBytes": 43747,
+      "scriptBytes": 342913
+    },
+    "/checkout/": {
+      "performance": 0.95,
+      "lcpMs": 2868.5729999999994,
+      "ttfbMs": 6,
+      "speedIndexMs": 913.9041,
+      "tbtMs": 103,
+      "cls": 0.005308561418582962,
+      "totalBytes": 564012,
+      "imageBytes": 43747,
+      "scriptBytes": 354915
+    }
+  }
+}

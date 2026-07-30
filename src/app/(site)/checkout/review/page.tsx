@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { CheckoutReview } from "@/components/checkout/CheckoutReview";
 import { getPaystackMode } from "@/lib/commerce/paystack";
@@ -12,7 +13,7 @@ export const metadata = createPageMetadata({
   noIndex: true,
 });
 
-export default async function CheckoutReviewPage({
+async function CheckoutReviewContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -62,5 +63,26 @@ export default async function CheckoutReviewPage({
         />
       </div>
     </section>
+  );
+}
+
+export default function CheckoutReviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <section className="section">
+          <div className="container container--reading">
+            <h1>Reviewing your order</h1>
+            <p>Loading checkout details…</p>
+          </div>
+        </section>
+      }
+    >
+      <CheckoutReviewContent searchParams={searchParams} />
+    </Suspense>
   );
 }
