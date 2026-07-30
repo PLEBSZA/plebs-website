@@ -8,13 +8,22 @@ export async function createRestockRequest(input: {
   email: string;
   size: string;
   colour?: string;
+  marketingConsent?: boolean;
 }) {
   const email = input.email.trim().toLowerCase();
   const size = input.size.trim().toUpperCase();
   const colour = input.colour?.trim() || "Forest Green";
+  const marketingConsent = Boolean(input.marketingConsent);
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false as const, message: "Enter a valid email address." };
+  }
+
+  if (!marketingConsent) {
+    return {
+      ok: false as const,
+      message: "Please confirm we may email you about this restock.",
+    };
   }
 
   if (!size) {
@@ -77,7 +86,7 @@ export async function createRestockRequest(input: {
       colour: variant.colourName,
       size: variant.sizeName,
       status: RestockRequestStatus.ACTIVE,
-      marketingConsent: false,
+      marketingConsent: true,
       source: "storefront",
     },
   });

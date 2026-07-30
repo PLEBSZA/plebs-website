@@ -72,8 +72,9 @@
   font-size: var(--text-sm);
 }
 
-.help {
-  color: var(--color-muted);
+.help a {
+  color: var(--color-forest);
+  font-weight: 700;
 }
 
 .note {

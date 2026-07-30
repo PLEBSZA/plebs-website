@@ -1,8 +1,24 @@
 .strip {
+  position: relative;
   padding-block: 1.25rem;
   overflow: hidden;
   background: var(--color-forest);
   color: var(--color-cream);
+}
+
+/* One item cycle, measured offscreen so we know how many repeats fill the viewport. */
+.probe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(2.5rem, 7vw, 6rem);
+  padding-right: clamp(2.5rem, 7vw, 6rem);
+  list-style: none;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .viewport {

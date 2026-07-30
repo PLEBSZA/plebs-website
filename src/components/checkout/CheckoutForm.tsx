@@ -148,6 +148,10 @@ export function CheckoutForm({ paymentMode }: CheckoutFormProps) {
               <input type="tel" name="phone" autoComplete="tel" required />
             </label>
           </div>
+          <p className={styles.privacyNote}>
+            We use these details to fulfil your order and send order updates.
+            See the <Link href="/privacy-policy/">privacy policy</Link>.
+          </p>
         </fieldset>
 
         <fieldset className={styles.fieldset}>

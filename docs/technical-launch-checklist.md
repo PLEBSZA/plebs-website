@@ -49,8 +49,9 @@ Use this before Search Console and merchant setup. Mark each item only when veri
 
 ## Analytics and consent
 
-- [ ] Consent banner offers Accept, Reject non-essential and Customise
-- [ ] Analytics events fire only after analytics consent
+- [ ] GA4 Measurement ID is set in production (`NEXT_PUBLIC_GA_MEASUREMENT_ID`)
+- [ ] Analytics loads without a cookie banner; Realtime shows page views
+- [ ] Email/restock forms require an explicit marketing consent checkbox
 - [ ] `view_item`, `select_colour`, `select_size` and `add_to_cart` payloads are validated
 - [ ] Purchase events are deduplicated by order ID once checkout exists
 - [ ] Test orders are separated from production reporting

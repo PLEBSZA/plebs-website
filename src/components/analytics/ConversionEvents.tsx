@@ -2,37 +2,13 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { useAnalyticsAllowed } from "@/components/consent/ConsentProvider";
 import { useStorefrontCatalogue } from "@/components/commerce/StorefrontCatalogueProvider";
+import {
+  emitAnalytics,
+  type AnalyticsPayload,
+} from "@/lib/analytics/emit";
 import { buildAnalyticsItem } from "@/lib/product";
 import type { StorefrontCatalogue } from "@/lib/commerce/storefront-types";
-
-type AnalyticsPayload = {
-  event: string;
-  path: string;
-  label?: string;
-  value?: string;
-  ecommerce?: Record<string, unknown>;
-  selected_size?: string;
-  availability?: string;
-  variant_sku?: string | null;
-  colour?: string;
-  quantity?: number;
-};
-
-declare global {
-  interface Window {
-    dataLayer?: AnalyticsPayload[];
-  }
-}
-
-function emit(payload: AnalyticsPayload) {
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push(payload);
-  window.dispatchEvent(
-    new CustomEvent("plebs:analytics", { detail: payload }),
-  );
-}
 
 function ecommerceForEvent(
   catalogue: StorefrontCatalogue,
@@ -52,6 +28,7 @@ function ecommerceForEvent(
     "select_colour",
     "select_size",
     "begin_checkout",
+    "add_payment_info",
     "purchase",
   ]);
 
@@ -67,7 +44,7 @@ function ecommerceForEvent(
   return {
     currency: catalogue.currency,
     ...(catalogue.commerceEnabled && catalogue.price != null
-      ? { value: catalogue.price }
+      ? { value: catalogue.price * (variant?.quantity ?? 1) }
       : {}),
     items: [item],
   };
@@ -75,23 +52,18 @@ function ecommerceForEvent(
 
 export function ConversionEvents() {
   const pathname = usePathname();
-  const analyticsAllowed = useAnalyticsAllowed();
   const catalogue = useStorefrontCatalogue();
 
   useEffect(() => {
-    if (!analyticsAllowed) return;
-
     const event = pathname.startsWith("/products/") ? "view_item" : "page_view";
-    emit({
+    emitAnalytics({
       event,
       path: pathname,
       ecommerce: ecommerceForEvent(catalogue, event),
     });
-  }, [pathname, analyticsAllowed, catalogue]);
+  }, [pathname, catalogue]);
 
   useEffect(() => {
-    if (!analyticsAllowed) return;
-
     function payloadFromElement(element: HTMLElement): AnalyticsPayload | null {
       const event = element.dataset.event;
       if (!event) return null;
@@ -124,7 +96,7 @@ export function ConversionEvents() {
       if (!tracked || tracked.matches("select, input, form")) return;
 
       const payload = payloadFromElement(tracked);
-      if (payload) emit(payload);
+      if (payload) emitAnalytics(payload);
     }
 
     function onChange(event: Event) {
@@ -134,7 +106,7 @@ export function ConversionEvents() {
       if (!tracked) return;
 
       const payload = payloadFromElement(tracked);
-      if (payload) emit(payload);
+      if (payload) emitAnalytics(payload);
     }
 
     function onSubmit(event: SubmitEvent) {
@@ -143,13 +115,12 @@ export function ConversionEvents() {
       );
       if (!tracked) return;
 
-      // Align contact form naming with the Step 6 event map.
       const payload = payloadFromElement(tracked);
       if (!payload) return;
       if (payload.event === "contact_form_submit") {
         payload.event = "contact_submit";
       }
-      emit(payload);
+      emitAnalytics(payload);
     }
 
     document.addEventListener("click", onClick);
@@ -159,10 +130,12 @@ export function ConversionEvents() {
     function onCommerceEvent(event: Event) {
       const detail = (event as CustomEvent<Omit<AnalyticsPayload, "path">>)
         .detail;
-      emit({
+      emitAnalytics({
         ...detail,
         path: window.location.pathname,
-        ecommerce: ecommerceForEvent(catalogue, detail.event, detail),
+        ecommerce:
+          detail.ecommerce ??
+          ecommerceForEvent(catalogue, detail.event, detail),
       });
     }
 
@@ -174,11 +147,9 @@ export function ConversionEvents() {
       document.removeEventListener("submit", onSubmit);
       window.removeEventListener("plebs:commerce-event", onCommerceEvent);
     };
-  }, [analyticsAllowed, catalogue]);
+  }, [catalogue]);
 
   useEffect(() => {
-    if (!analyticsAllowed) return;
-
     const viewed = new WeakSet<Element>();
     const elements = document.querySelectorAll<HTMLElement>("[data-view-event]");
     if (elements.length === 0) return;
@@ -190,7 +161,7 @@ export function ConversionEvents() {
 
           viewed.add(entry.target);
           const element = entry.target as HTMLElement;
-          emit({
+          emitAnalytics({
             event: element.dataset.viewEvent ?? "content_view",
             path: window.location.pathname,
             label: element.dataset.eventLabel,
@@ -203,7 +174,7 @@ export function ConversionEvents() {
 
     elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
-  }, [pathname, analyticsAllowed]);
+  }, [pathname]);
 
   return null;
 }

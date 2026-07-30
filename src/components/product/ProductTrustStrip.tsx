@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import styles from "./ProductTrustStrip.module.css";
 
 const defaultItems = [
@@ -17,19 +17,45 @@ type ProductTrustStripProps = {
 export function ProductTrustStrip({
   items = defaultItems,
 }: ProductTrustStripProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLUListElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const firstGroupRef = useRef<HTMLUListElement>(null);
+  const groupRef = useRef<HTMLUListElement>(null);
+  const [repeatCount, setRepeatCount] = useState(1);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const probe = probeRef.current;
+    if (!viewport || !probe) return;
+
+    const updateRepeats = () => {
+      const cycleWidth = probe.getBoundingClientRect().width;
+      const viewportWidth = viewport.getBoundingClientRect().width;
+      if (cycleWidth <= 0 || viewportWidth <= 0) return;
+
+      // One animated group must be wider than the viewport, otherwise the
+      // forest-green strip shows empty space before the loop wraps.
+      setRepeatCount(Math.max(1, Math.ceil(viewportWidth / cycleWidth) + 1));
+    };
+
+    updateRepeats();
+    const observer = new ResizeObserver(updateRepeats);
+    observer.observe(viewport);
+    observer.observe(probe);
+    return () => observer.disconnect();
+  }, [items]);
+
+  useLayoutEffect(() => {
     const track = trackRef.current;
-    const firstGroup = firstGroupRef.current;
-    if (!track || !firstGroup) return;
+    const group = groupRef.current;
+    if (!track || !group) return;
 
     // CSS reference units define 1 cm as 96 / 2.54 pixels.
     const pixelsPerSecond = (2 * 96) / 2.54;
 
     const updateMotion = () => {
-      const distance = firstGroup.getBoundingClientRect().width;
+      const distance = group.getBoundingClientRect().width;
+      if (distance <= 0) return;
       track.style.setProperty("--marquee-distance", `${distance}px`);
       track.style.setProperty(
         "--marquee-duration",
@@ -39,27 +65,34 @@ export function ProductTrustStrip({
 
     updateMotion();
     const observer = new ResizeObserver(updateMotion);
-    observer.observe(firstGroup);
-
+    observer.observe(group);
     return () => observer.disconnect();
-  }, [items]);
+  }, [items, repeatCount]);
 
-  const renderItems = (duplicate = false) =>
-    items.map((item) => (
-      <li key={`${duplicate ? "duplicate-" : ""}${item}`} className={styles.item}>
+  const segment = useMemo(
+    () => Array.from({ length: repeatCount }, () => items).flat(),
+    [items, repeatCount],
+  );
+
+  const renderItems = (list: string[], keyPrefix: string) =>
+    list.map((item, index) => (
+      <li key={`${keyPrefix}-${index}-${item}`} className={styles.item}>
         {item}
       </li>
     ));
 
   return (
     <section className={styles.strip} aria-label="Product highlights">
-      <div className={styles.viewport}>
+      <ul ref={probeRef} className={styles.probe} aria-hidden="true">
+        {renderItems(items, "probe")}
+      </ul>
+      <div ref={viewportRef} className={styles.viewport}>
         <div ref={trackRef} className={styles.track}>
-          <ul ref={firstGroupRef} className={styles.list}>
-            {renderItems()}
+          <ul ref={groupRef} className={styles.list}>
+            {renderItems(segment, "a")}
           </ul>
           <ul className={styles.list} aria-hidden="true">
-            {renderItems(true)}
+            {renderItems(segment, "b")}
           </ul>
         </div>
       </div>

@@ -5,8 +5,7 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { ConversionEvents } from "@/components/analytics/ConversionEvents";
-import { ConsentProvider } from "@/components/consent/ConsentProvider";
-import { CookieConsent } from "@/components/consent/CookieConsent";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { StorefrontCatalogueProvider } from "@/components/commerce/StorefrontCatalogueProvider";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -95,26 +94,24 @@ export default async function RootLayout({
   return (
     <html lang="en-ZA" className={`${fraunces.variable} ${sourceSans.variable}`}>
       <body>
-        <ConsentProvider>
-          <StorefrontCatalogueProvider catalogue={catalogue}>
-            <CartProvider>
-              <a href="#main-content" className="skip-link">
-                Skip to content
-              </a>
-              <div className="site-shell">
-                <AnnouncementBar />
-                <SiteHeader />
-                <main id="main-content" className="site-main">
-                  {children}
-                </main>
-                <SiteFooter />
-              </div>
-              <ConversionEvents />
-              <CookieConsent />
-              <JsonLd data={siteGraph} />
-            </CartProvider>
-          </StorefrontCatalogueProvider>
-        </ConsentProvider>
+        <StorefrontCatalogueProvider catalogue={catalogue}>
+          <CartProvider>
+            <a href="#main-content" className="skip-link">
+              Skip to content
+            </a>
+            <div className="site-shell">
+              <AnnouncementBar />
+              <SiteHeader />
+              <main id="main-content" className="site-main">
+                {children}
+              </main>
+              <SiteFooter />
+            </div>
+            <ConversionEvents />
+            <GoogleAnalytics />
+            <JsonLd data={siteGraph} />
+          </CartProvider>
+        </StorefrontCatalogueProvider>
       </body>
     </html>
   );

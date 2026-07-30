@@ -72,23 +72,6 @@
   color: var(--color-sand);
 }
 
-.cookieButton {
-  min-height: 2.75rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-cream-100);
-  font-size: var(--text-sm);
-  text-align: left;
-  cursor: pointer;
-}
-
-.cookieButton:hover {
-  color: var(--color-white);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
 .bottom {
   width: min(100% - (var(--gutter) * 2), var(--content-max));
   margin-inline: auto;

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import Link from "next/link";
 import styles from "./ContactForm.module.css";
 
 const enquiryTypes = [
@@ -135,7 +136,9 @@ export function ContactForm() {
         </p>
       ) : (
         <p className={styles.help}>
-          Your message will be delivered to hello@plebs.co.za.
+          Your message will be delivered to hello@plebs.co.za. We use the
+          details you share only to reply to this enquiry. See the{" "}
+          <Link href="/privacy-policy/">privacy policy</Link>.
         </p>
       )}
     </form>

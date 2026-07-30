@@ -78,3 +78,23 @@
   color: var(--color-forest-900);
   font-weight: 700;
 }
+
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.45;
+}
+
+.consent input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--color-forest-900);
+}
+
+.consent a {
+  color: var(--color-forest-900);
+  font-weight: 700;
+}

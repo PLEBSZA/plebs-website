@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PurchaseBeacon } from "@/components/analytics/PurchaseBeacon";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { createPageMetadata } from "@/lib/metadata";
 import { productData } from "@/lib/product";
@@ -22,6 +23,7 @@ export default async function OrderConfirmationPage({
 
   return (
     <section className="section">
+      <PurchaseBeacon orderNumber={orderNumber} paid={paid} />
       <div className="container container--reading">
         <p className="editorial-page__kicker">
           {paymentFailed ? "Payment unsuccessful" : "Order confirmed"}

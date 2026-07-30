@@ -12,12 +12,14 @@ export async function POST(request: Request) {
     email?: string;
     size?: string;
     colour?: string;
+    marketingConsent?: boolean;
   };
 
   const result = await createRestockRequest({
     email: body.email ?? "",
     size: body.size ?? "",
     colour: body.colour,
+    marketingConsent: body.marketingConsent === true,
   });
 
   if (!result.ok) {

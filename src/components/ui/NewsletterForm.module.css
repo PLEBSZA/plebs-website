@@ -61,3 +61,29 @@
   font-size: var(--text-sm);
   color: var(--color-sand);
 }
+
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: rgba(247, 242, 232, 0.8);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.consent input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--color-sand);
+}
+
+.consent a {
+  color: var(--color-cream);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

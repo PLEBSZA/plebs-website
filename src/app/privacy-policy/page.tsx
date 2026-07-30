@@ -68,9 +68,11 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2>Analytics and Cookies</h2>
           <p>
-            Analytics, conversion tracking and cookie tools will be disclosed
-            here once selected. Cookie settings will only be offered when they
-            are operational.
+            PLEBS uses Google Analytics to understand site usage and the purchase
+            funnel (for example page views, add to cart and checkout). Analytics
+            cookies may be used for this purpose. Necessary site cookies keep
+            cart and checkout working. Marketing emails are only sent when you
+            give consent on a signup or restock form.
           </p>
         </section>
 

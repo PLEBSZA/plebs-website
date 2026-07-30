@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { PlebsLogo } from "@/components/brand/PlebsLogo";
 import { NewsletterForm } from "@/components/ui/NewsletterForm";
-import { CookieSettingsButton } from "@/components/consent/CookieSettingsButton";
 import { siteConfig } from "@/lib/site";
 import styles from "./SiteFooter.module.css";
 
@@ -61,11 +60,6 @@ export function SiteFooter() {
                     <Link href={link.href}>{link.label}</Link>
                   </li>
                 ))}
-                {group.title === "Legal" ? (
-                  <li>
-                    <CookieSettingsButton />
-                  </li>
-                ) : null}
               </ul>
             </div>
           ))}

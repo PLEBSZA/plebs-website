@@ -6,6 +6,7 @@ import { useState } from "react";
 import { formatMoney } from "@/lib/money";
 import { productData } from "@/lib/product";
 import { getShippingMethod } from "@/lib/shipping";
+import { stashPendingPurchase } from "@/lib/analytics/emit";
 import styles from "./CheckoutReview.module.css";
 
 export type CheckoutReviewOrder = {
@@ -86,6 +87,47 @@ export function CheckoutReview({
         setError(result.message ?? "Unable to open Paystack checkout.");
         return;
       }
+
+      stashPendingPurchase({
+        transaction_id: order.number,
+        currency: order.currency,
+        value: order.total,
+        items: [
+          {
+            item_id: order.line.sku ?? order.line.productName,
+            item_name: order.line.productName,
+            item_variant: `${order.line.colour} / ${order.line.size}`,
+            price: order.line.unitPrice,
+            quantity: order.line.quantity,
+          },
+        ],
+      });
+
+      window.dispatchEvent(
+        new CustomEvent("plebs:commerce-event", {
+          detail: {
+            event: "add_payment_info",
+            selected_size: order.line.size,
+            colour: order.line.colour,
+            quantity: order.line.quantity,
+            variant_sku: order.line.sku,
+            ecommerce: {
+              currency: order.currency,
+              value: order.total,
+              payment_type: "Paystack",
+              items: [
+                {
+                  item_id: order.line.sku ?? order.line.productName,
+                  item_name: order.line.productName,
+                  item_variant: `${order.line.colour} / ${order.line.size}`,
+                  price: order.line.unitPrice,
+                  quantity: order.line.quantity,
+                },
+              ],
+            },
+          },
+        }),
+      );
 
       window.location.href = result.authorizationUrl;
     } catch {

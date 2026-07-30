@@ -25,6 +25,7 @@ export function RestockNotifyForm({
   const formId = useId();
   const [email, setEmail] = useState("");
   const [size, setSize] = useState(initialSize);
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
     "idle",
   );
@@ -32,6 +33,12 @@ export function RestockNotifyForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!consent) {
+      setStatus("error");
+      setMessage("Please confirm we may email you about this restock.");
+      return;
+    }
+
     setStatus("loading");
     setMessage("");
 
@@ -39,7 +46,12 @@ export function RestockNotifyForm({
       const response = await fetch("/api/restock/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, size, colour }),
+        body: JSON.stringify({
+          email,
+          size,
+          colour,
+          marketingConsent: true,
+        }),
       });
       const data = (await response.json()) as { message?: string };
 
@@ -127,10 +139,24 @@ export function RestockNotifyForm({
       <button
         type="submit"
         className={styles.button}
-        disabled={status === "loading"}
+        disabled={status === "loading" || !consent}
       >
         {status === "loading" ? "Saving…" : "Notify Me"}
       </button>
+
+      <label className={styles.consent}>
+        <input
+          type="checkbox"
+          name="marketingConsent"
+          checked={consent}
+          onChange={(event) => setConsent(event.target.checked)}
+          required
+        />
+        <span>
+          I agree that PLEBS may email me when this size is back in stock. See
+          the <Link href="/privacy-policy/">privacy policy</Link>.
+        </span>
+      </label>
 
       {message ? (
         <p
