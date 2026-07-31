@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Source_Sans_3 } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { shouldIndexSite, getCanonicalSiteUrl } from "@/lib/env";
 import { defaultOgImage } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
@@ -64,7 +65,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-ZA" className={`${fraunces.variable} ${sourceSans.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
