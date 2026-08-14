@@ -20,6 +20,7 @@ import { enqueueOutbox, scheduleOutboxProcessing } from "@/lib/account/outbox";
 import { ensureCustomerAccount } from "@/lib/account/ensure-account";
 import { recoveryOutboxEventType } from "@/lib/account/policy";
 import { consumeThrottle } from "@/lib/account/throttle";
+import { isAdminRole } from "@/lib/account/roles";
 import { consumeAccountToken } from "@/lib/account/tokens";
 import { safeInternalCallbackPath } from "@/lib/auth/callback-url";
 import { db } from "@/lib/db";
@@ -67,6 +68,9 @@ export async function customerLoginAction(
     where: { email },
     include: { customer: true },
   });
+  if (user && isAdminRole(user.role)) {
+    redirect("/admin/");
+  }
   if (!user?.customer) {
     await signOut({ redirect: false });
     return { error: "Invalid email or password." };

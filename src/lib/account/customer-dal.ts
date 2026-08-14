@@ -9,6 +9,7 @@ import {
 } from "@/generated/prisma/client";
 import { auth } from "@/auth";
 import { MIN_PASSWORD_LENGTH } from "@/lib/account/consent";
+import { isAdminRole } from "@/lib/account/roles";
 import { consumeAccountToken } from "@/lib/account/tokens";
 import { db } from "@/lib/db";
 
@@ -49,8 +50,12 @@ export const getCustomerSession = cache(async (): Promise<CustomerSession | null
 
 export async function requireCustomerSession() {
   const session = await getCustomerSession();
-  if (!session) redirect("/account/login/");
-  return session;
+  if (session) return session;
+  const authSession = await auth();
+  if (isAdminRole(authSession?.user?.role)) {
+    redirect("/admin/");
+  }
+  redirect("/account/login/");
 }
 
 export async function setPasswordFromToken(input: {

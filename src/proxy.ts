@@ -8,6 +8,7 @@ import {
   shouldIndexSite,
 } from "@/lib/env";
 import {
+  authorizeAdminPath,
   isPublicAccountPath,
   normalizePathname,
 } from "@/lib/auth/authorize";
@@ -42,6 +43,14 @@ export const proxy = auth(function proxy(request) {
 
   const session = request.auth;
   const path = normalizePathname(pathname);
+
+  if (!authorizeAdminPath(pathname, session?.user?.role)) {
+    const url = pageUrl.clone();
+    url.pathname = "/admin/login/";
+    url.search = "";
+    url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
+  }
 
   if (path.startsWith("/account") && !isPublicAccountPath(pathname)) {
     if (!session?.user?.id) {

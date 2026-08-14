@@ -48,6 +48,21 @@ describe("authorization migration", () => {
     assert.equal(authorizeAdminPath("/admin/login/", "CUSTOMER"), true);
     assert.equal(authorizeAdminPath("/admin", "OWNER"), true);
     assert.equal(authorizeAdminPath("/products/", "CUSTOMER"), true);
+    const proxy = readFileSync(join(root, "src/proxy.ts"), "utf8");
+    assert.match(proxy, /authorizeAdminPath/);
+    assert.match(proxy, /\/admin\/login\//);
+    const adminLogin = readFileSync(
+      join(root, "src/app/admin/login/page.tsx"),
+      "utf8",
+    );
+    assert.match(adminLogin, /getAdminSession/);
+    assert.doesNotMatch(adminLogin, /redirect\("\/account\/"\)/);
+    const customerLogin = readFileSync(
+      join(root, "src/app/account/actions.ts"),
+      "utf8",
+    );
+    assert.match(customerLogin, /isAdminRole\(user\.role\)/);
+    assert.match(customerLogin, /redirect\("\/admin\/"\)/);
   });
 
   it("keeps account setup/reset/confirm public", () => {

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createPageMetadata } from "@/lib/metadata";
+import { isAdminRole } from "@/lib/account/roles";
 import { getCustomerSession } from "@/lib/account/customer-dal";
+import { auth } from "@/auth";
 import { safeInternalCallbackPath } from "@/lib/auth/callback-url";
 import { CustomerLoginForm } from "../CustomerLoginForm";
 
@@ -18,6 +20,10 @@ export default async function AccountLoginPage({
 }) {
   const params = await searchParams;
   const callbackUrl = safeInternalCallbackPath(params.callbackUrl);
+  const authSession = await auth();
+  if (isAdminRole(authSession?.user?.role)) {
+    redirect("/admin/");
+  }
   const session = await getCustomerSession();
   if (session) redirect(callbackUrl);
   const notice = params.activated

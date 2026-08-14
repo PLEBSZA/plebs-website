@@ -13,7 +13,7 @@ export function LoginForm() {
     <form className={styles.card} action={action} noValidate>
       <div>
         <h1>PLEBS Admin</h1>
-        <p>Sign in to manage inventory, orders and catalogue data.</p>
+        <p>Store staff sign in. Shopper accounts use the site Sign in, not this page.</p>
       </div>
 
       <div className={styles.field}>

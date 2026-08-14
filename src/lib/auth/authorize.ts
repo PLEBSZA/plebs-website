@@ -31,9 +31,10 @@ export function isPublicAccountPath(pathname: string): boolean {
 
 /**
  * Edge-safe path gate. DAL/actions still authorize independently.
- * Returning false for /admin sends Auth.js to the admin sign-in page.
- * /account protection is applied in `proxy.ts` so customers are not
- * sent to `/admin/login`.
+ * Auth.js ignores `authorized` when a custom proxy wrapper is present, so
+ * `proxy.ts` must redirect failed admin checks to `/admin/login/`.
+ * /account protection stays in `proxy.ts` so customers are not sent to
+ * the staff sign-in page.
  */
 export function authorizeAdminPath(
   pathname: string,
