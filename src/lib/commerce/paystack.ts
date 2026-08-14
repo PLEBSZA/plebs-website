@@ -2,7 +2,7 @@ import "server-only";
 
 import { PaymentStatus } from "@/generated/prisma/client";
 import { shouldReusePaystackInitialization } from "@/lib/checkout/policy";
-import { getCanonicalSiteUrl } from "@/lib/env";
+import { getTransactionalSiteUrl } from "@/lib/env";
 import { markOrderPaid } from "@/lib/commerce/fulfilment-service";
 import { db } from "@/lib/db";
 
@@ -155,7 +155,7 @@ export async function initializePaystackPayment(
   const callbackBaseUrl =
     process.env.NODE_ENV === "development" && requestOrigin
       ? requestOrigin
-      : getCanonicalSiteUrl();
+      : getTransactionalSiteUrl();
   const callbackUrl = new URL(
     "/api/payments/paystack/callback/",
     callbackBaseUrl,

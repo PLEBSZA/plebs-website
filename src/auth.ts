@@ -5,6 +5,9 @@ import { z } from "zod";
 import authConfig from "@/auth.config";
 import { normalizeEmail } from "@/lib/account/email";
 import { db } from "@/lib/db";
+import { sanitizeDeployedAuthEnv } from "@/lib/env";
+
+sanitizeDeployedAuthEnv();
 
 const credentialsSchema = z.object({
   email: z.string().email(),

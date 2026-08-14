@@ -236,6 +236,18 @@ describe("repository guards", () => {
     assert.match(outbox, /OutboxStatus\.PROCESSING/);
   });
 
+  it("builds account email links from the public site URL, not localhost", () => {
+    const emails = readFileSync(
+      join(root, "src/lib/account/account-emails.ts"),
+      "utf8",
+    );
+    assert.match(emails, /getTransactionalSiteUrl/);
+    assert.doesNotMatch(emails, /getCanonicalSiteUrl/);
+    const authConfig = readFileSync(join(root, "src/auth.config.ts"), "utf8");
+    assert.match(authConfig, /resolveAuthRedirectUrl/);
+    assert.match(authConfig, /sanitizeDeployedAuthEnv/);
+  });
+
   it("validates Create Account emails before writing customer rows", () => {
     const actions = readFileSync(
       join(root, "src/app/account/actions.ts"),
@@ -324,6 +336,10 @@ describe("safe internal callback paths", () => {
     assert.equal(safeInternalCallbackPath("/\\evil.example"), "/account/");
     assert.equal(safeInternalCallbackPath("\\\\evil.example"), "/account/");
     assert.equal(safeInternalCallbackPath("javascript:alert(1)"), "/account/");
+    assert.equal(
+      safeInternalCallbackPath("http://localhost:3001/account/"),
+      "/account/",
+    );
   });
 
   it("returns checkout shoppers to checkout after sign-in", () => {

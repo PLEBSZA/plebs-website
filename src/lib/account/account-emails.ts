@@ -3,7 +3,7 @@ import "server-only";
 import { AccountTokenPurpose } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { hashAccountToken, issueAccountToken } from "@/lib/account/tokens";
-import { getCanonicalSiteUrl } from "@/lib/env";
+import { getTransactionalSiteUrl } from "@/lib/env";
 import { getContactEmail, sendEmail } from "@/lib/email/resend";
 import { emailTemplateAliases } from "@/lib/email/template-aliases";
 
@@ -21,7 +21,7 @@ function firstNameFrom(name: string | null | undefined, email: string) {
 }
 
 function accountUrl(path: string, token: string) {
-  const url = new URL(path, `${getCanonicalSiteUrl()}/`);
+  const url = new URL(path, `${getTransactionalSiteUrl()}/`);
   url.searchParams.set("token", token);
   return url.toString();
 }

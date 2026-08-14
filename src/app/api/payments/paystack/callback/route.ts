@@ -5,9 +5,10 @@ import {
   serializeCheckoutCookieValue,
 } from "@/lib/checkout/cookie";
 import { verifyPaystackPayment, isPaystackConfigured } from "@/lib/commerce/paystack";
+import { rewriteLoopbackToPublicUrl } from "@/lib/env";
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
+  const requestUrl = rewriteLoopbackToPublicUrl(new URL(request.url));
   const reference =
     requestUrl.searchParams.get("reference") ??
     requestUrl.searchParams.get("trxref");

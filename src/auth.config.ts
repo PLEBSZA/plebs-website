@@ -1,5 +1,8 @@
 import type { NextAuthConfig } from "next-auth";
 import { authorizeAdminPath } from "@/lib/auth/authorize";
+import { resolveAuthRedirectUrl, sanitizeDeployedAuthEnv } from "@/lib/env";
+
+sanitizeDeployedAuthEnv();
 
 /**
  * Edge-compatible Auth.js config (safe for Next.js proxy).
@@ -17,6 +20,9 @@ export default {
   callbacks: {
     authorized({ auth, request }) {
       return authorizeAdminPath(request.nextUrl.pathname, auth?.user?.role);
+    },
+    redirect({ url, baseUrl }) {
+      return resolveAuthRedirectUrl(url, baseUrl);
     },
   },
   trustHost: true,

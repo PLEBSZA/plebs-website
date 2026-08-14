@@ -1,11 +1,18 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import authConfig from "@/auth.config";
-import { shouldIndexSite } from "@/lib/env";
+import {
+  getTransactionalSiteUrl,
+  isLoopbackHostname,
+  sanitizeDeployedAuthEnv,
+  shouldIndexSite,
+} from "@/lib/env";
 import {
   isPublicAccountPath,
   normalizePathname,
 } from "@/lib/auth/authorize";
+
+sanitizeDeployedAuthEnv();
 
 /**
  * Auth.js keeps the session alive on matched requests.
@@ -15,10 +22,20 @@ import {
 const { auth } = NextAuth(authConfig);
 
 export const proxy = auth(function proxy(request) {
-  const { pathname } = request.nextUrl;
+  const pageUrl = request.nextUrl.clone();
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    isLoopbackHostname(pageUrl.hostname)
+  ) {
+    const publicUrl = new URL(getTransactionalSiteUrl());
+    pageUrl.protocol = publicUrl.protocol;
+    pageUrl.hostname = publicUrl.hostname;
+    pageUrl.port = publicUrl.port;
+  }
+  const { pathname } = pageUrl;
 
   if (pathname !== pathname.toLowerCase()) {
-    const url = request.nextUrl.clone();
+    const url = pageUrl.clone();
     url.pathname = pathname.toLowerCase();
     return NextResponse.redirect(url, 308);
   }
@@ -28,7 +45,7 @@ export const proxy = auth(function proxy(request) {
 
   if (path.startsWith("/account") && !isPublicAccountPath(pathname)) {
     if (!session?.user?.id) {
-      const url = request.nextUrl.clone();
+      const url = pageUrl.clone();
       url.pathname = "/account/login/";
       url.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(url);
