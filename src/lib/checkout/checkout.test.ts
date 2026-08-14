@@ -319,6 +319,12 @@ describe("checkout source contracts", () => {
     assert.doesNotMatch(confirmation, /params\.token/);
   });
 
+  it("self-hosts display fonts so Vercel builds do not fetch Google Fonts", () => {
+    const layout = read("src/app/layout.tsx");
+    assert.match(layout, /next\/font\/local/);
+    assert.doesNotMatch(layout, /next\/font\/google/);
+  });
+
   it("exposes a Vercel-callable GET cron on the integration-outbox route", () => {
     const outbox = read("src/app/api/cron/integration-outbox/route.ts");
     assert.match(outbox, /export const \{ GET, POST \}/);

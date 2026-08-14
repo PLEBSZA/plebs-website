@@ -1,23 +1,29 @@
 import type { Metadata } from "next";
-import { Fraunces, Source_Sans_3 } from "next/font/google";
+import localFont from "next/font/local";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { shouldIndexSite, getCanonicalSiteUrl } from "@/lib/env";
 import { defaultOgImage } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
+// Self-hosted so `next build` does not fetch Google Fonts. Turbopack currently
+// requests Fraunces woff2 URLs that fonts.gstatic.com 404s, which fails Vercel.
+const fraunces = localFont({
+  src: "./fonts/Fraunces-latin.woff2",
   variable: "--font-fraunces",
   display: "swap",
-  weight: ["400", "600"],
+  weight: "100 900",
+  fallback: ["Iowan Old Style", "Palatino Linotype", "Georgia", "serif"],
+  adjustFontFallback: "Times New Roman",
 });
 
-const sourceSans = Source_Sans_3({
-  subsets: ["latin"],
+const sourceSans = localFont({
+  src: "./fonts/SourceSans3-latin.woff2",
   variable: "--font-source-sans",
   display: "swap",
-  weight: ["400", "500", "600"],
+  weight: "200 900",
+  fallback: ["Segoe UI", "sans-serif"],
+  adjustFontFallback: "Arial",
 });
 
 const siteUrl = getCanonicalSiteUrl();
