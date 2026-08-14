@@ -6,17 +6,30 @@ import {
   OrderStatus,
   PaymentStatus,
   ReturnStatus,
+  VariantStatus,
+  type Prisma,
 } from "@/generated/prisma/client";
+import {
+  checkoutDetailsSchema,
+  flattenCheckoutFieldErrors,
+  type CheckoutDetailsInput,
+} from "@/lib/checkout/schema";
 import { db } from "@/lib/db";
 import {
-  releaseOrderReservation,
-  reserveStockForOrder,
-  validatePurchaseQuantity,
+  releaseOrderReservationWithClient,
+  syncOrderReservationWithClient,
+  type InventoryTx,
 } from "@/lib/commerce/inventory-reservation";
-import { getShippingMethod } from "@/lib/shipping";
+import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
+import { findStorefrontVariant } from "@/lib/commerce/storefront-product";
+import { getReusablePaystackRedirect } from "@/lib/commerce/paystack";
+import { getShippingMethod, type ShippingMethod } from "@/lib/shipping";
 
 type CheckoutPaymentMetadata = {
   checkoutToken?: string;
+  authorization_url?: string;
+  access_code?: string;
+  initialized_email?: string;
 };
 
 function createCheckoutToken() {
@@ -36,6 +49,28 @@ function readCheckoutToken(metadata: unknown) {
   return (metadata as CheckoutPaymentMetadata).checkoutToken;
 }
 
+function readPaymentMetadata(metadata: unknown): CheckoutPaymentMetadata {
+  if (!metadata || typeof metadata !== "object") return {};
+  return metadata as CheckoutPaymentMetadata;
+}
+
+function isUniqueConstraint(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
+
+class StockUnavailableError extends Error {
+  readonly code = "out_of_stock" as const;
+}
+
+class CheckoutConflictError extends Error {
+  readonly code = "conflict" as const;
+}
+
 export type OrderAddress = {
   line1: string;
   line2?: string;
@@ -47,6 +82,7 @@ export type OrderAddress = {
 };
 
 export type CreateOrderInput = {
+  checkoutKey: string;
   customer: {
     email: string;
     firstName: string;
@@ -75,219 +111,336 @@ export function createReturnReference() {
   return `RMA-${stamp}-${suffix}`;
 }
 
-function requireText(value: string | undefined, label: string) {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) throw new Error(`${label} is required.`);
-  return trimmed;
-}
-
-function validateEmail(email: string) {
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("Enter a valid email address.");
+async function loadPricedVariant(
+  tx: InventoryTx,
+  colour: string,
+  size: string,
+) {
+  const catalogueVariant = await findStorefrontVariant({ colour, size });
+  if (!catalogueVariant || catalogueVariant.status !== VariantStatus.ACTIVE) {
+    throw new StockUnavailableError("Please choose a valid in-stock size.");
   }
-  return email.trim().toLowerCase();
-}
 
-function validatePostalCode(postalCode: string) {
-  if (!/^\d{4}$/.test(postalCode.trim())) {
-    throw new Error("Enter a valid 4-digit South African postal code.");
+  const variant = await tx.productVariant.findUnique({
+    where: { id: catalogueVariant.id },
+    select: {
+      id: true,
+      productId: true,
+      sku: true,
+      retailPrice: true,
+      status: true,
+      colourValue: { select: { label: true } },
+      sizeValue: { select: { label: true } },
+    },
+  });
+
+  if (!variant || variant.status !== VariantStatus.ACTIVE) {
+    throw new StockUnavailableError("Please choose a valid in-stock size.");
   }
-  return postalCode.trim();
+
+  return {
+    id: variant.id,
+    productId: variant.productId,
+    sku: variant.sku,
+    retailPrice: Number(variant.retailPrice),
+    colourName: variant.colourValue.label,
+    sizeName: variant.sizeValue.label,
+  };
 }
 
-export async function createOrder(input: CreateOrderInput) {
-  try {
-    const customer = {
-      email: validateEmail(requireText(input.customer.email, "Email")),
-      firstName: requireText(input.customer.firstName, "First name"),
-      lastName: requireText(input.customer.lastName, "Last name"),
-      phone: requireText(input.customer.phone, "Phone"),
+async function upsertCustomerInTransaction(
+  tx: InventoryTx,
+  customer: CheckoutDetailsInput["customer"],
+) {
+  return tx.customer.upsert({
+    where: { email: customer.email },
+    update: {
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      phone: customer.phone,
+    },
+    create: {
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      phone: customer.phone,
+    },
+  });
+}
+
+async function upsertCheckoutInTransaction(
+  tx: InventoryTx,
+  details: CheckoutDetailsInput,
+  shipping: ShippingMethod,
+) {
+  const existing = await tx.order.findUnique({
+    where: { checkoutKey: details.checkoutKey },
+    include: { items: true, payments: true },
+  });
+
+  if (existing) {
+    if (existing.paymentStatus === PaymentStatus.PAID) {
+      throw new CheckoutConflictError("This checkout is already paid.");
+    }
+    if (existing.status === OrderStatus.CANCELLED) {
+      throw new CheckoutConflictError(
+        "This checkout was cancelled. Start again from the cart.",
+      );
+    }
+  }
+
+  const variant = await loadPricedVariant(tx, details.colour, details.size);
+  const shippingAddress = details.shippingAddress;
+  const billingAddress = details.billingSameAsShipping
+    ? shippingAddress
+    : (details.billingAddress ?? shippingAddress);
+  const unitPrice = variant.retailPrice;
+  const subtotal = Number((unitPrice * details.quantity).toFixed(2));
+  const total = Number((subtotal + shipping.price).toFixed(2));
+  const customerName = `${details.customer.firstName} ${details.customer.lastName}`;
+  const dbCustomer = await upsertCustomerInTransaction(tx, details.customer);
+
+  const itemData = {
+    productId: variant.productId,
+    variantId: variant.id,
+    productName: "100% Cotton Corduroy Dungarees",
+    sku: variant.sku,
+    colour: variant.colourName,
+    size: variant.sizeName,
+    unitPrice,
+    quantity: details.quantity,
+    lineTotal: subtotal,
+  };
+
+  if (existing) {
+    const amountChanged = Number(existing.total) !== total;
+    const emailChanged = existing.customerEmail !== details.customer.email;
+    const pendingPayment =
+      existing.payments.find((payment) => payment.status === PaymentStatus.PENDING) ??
+      existing.payments[0];
+    const existingMetadata = readPaymentMetadata(pendingPayment?.metadata);
+    const checkoutToken =
+      existingMetadata.checkoutToken ?? createCheckoutToken();
+    const nextMetadata: CheckoutPaymentMetadata = {
+      checkoutToken,
     };
-
-    const shippingAddress = {
-      line1: requireText(input.shippingAddress.line1, "Address"),
-      line2: input.shippingAddress.line2?.trim() || undefined,
-      suburb: requireText(input.shippingAddress.suburb, "Suburb"),
-      city: requireText(input.shippingAddress.city, "City"),
-      province: requireText(input.shippingAddress.province, "Province"),
-      postalCode: validatePostalCode(
-        requireText(input.shippingAddress.postalCode, "Postal code"),
-      ),
-      country: requireText(input.shippingAddress.country, "Country"),
-    };
-
-    const billingAddress = input.billingSameAsShipping
-      ? shippingAddress
-      : {
-          line1: requireText(input.billingAddress?.line1, "Billing address"),
-          line2: input.billingAddress?.line2?.trim() || undefined,
-          suburb: requireText(input.billingAddress?.suburb, "Billing suburb"),
-          city: requireText(input.billingAddress?.city, "Billing city"),
-          province: requireText(
-            input.billingAddress?.province,
-            "Billing province",
-          ),
-          postalCode: validatePostalCode(
-            requireText(input.billingAddress?.postalCode, "Billing postal code"),
-          ),
-          country: requireText(
-            input.billingAddress?.country,
-            "Billing country",
-          ),
-        };
-
-    const shipping = getShippingMethod(input.shippingMethodId);
-    if (!shipping) {
-      return {
-        ok: false as const,
-        code: "validation" as const,
-        message: "Select a delivery method.",
-      };
+    if (!amountChanged && !emailChanged) {
+      nextMetadata.authorization_url = existingMetadata.authorization_url;
+      nextMetadata.access_code = existingMetadata.access_code;
+      nextMetadata.initialized_email = existingMetadata.initialized_email;
     }
 
-    const stock = await validatePurchaseQuantity({
-      colour: input.colour,
-      size: input.size,
-      quantity: input.quantity,
+    const reservation = await syncOrderReservationWithClient(tx, {
+      orderId: existing.id,
+      variantId: variant.id,
+      quantity: details.quantity,
     });
-
-    if (!stock.ok || !stock.variant) {
-      return {
-        ok: false as const,
-        code: "out_of_stock" as const,
-        message: stock.message,
-      };
+    if (!reservation.ok) {
+      throw new StockUnavailableError(reservation.message);
     }
 
-    const unitPrice = stock.variant.retailPrice;
-    const subtotal = Number((unitPrice * input.quantity).toFixed(2));
-    const total = Number((subtotal + shipping.price).toFixed(2));
-    const customerName = `${customer.firstName} ${customer.lastName}`;
+    const currentItem = existing.items[0];
+    if (currentItem) {
+      await tx.orderItem.update({
+        where: { id: currentItem.id },
+        data: itemData,
+      });
+    } else {
+      await tx.orderItem.create({
+        data: { ...itemData, orderId: existing.id },
+      });
+    }
 
-    const dbCustomer = await db.customer.upsert({
-      where: { email: customer.email },
-      update: {
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        phone: customer.phone,
-      },
-      create: {
-        email: customer.email,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        phone: customer.phone,
-      },
-    });
+    if (pendingPayment) {
+      await tx.payment.update({
+        where: { id: pendingPayment.id },
+        data: {
+          amount: total,
+          currency: "ZAR",
+          status: PaymentStatus.PENDING,
+          providerReference:
+            amountChanged || emailChanged
+              ? null
+              : pendingPayment.providerReference,
+          metadata: nextMetadata as Prisma.InputJsonValue,
+        },
+      });
+    } else {
+      await tx.payment.create({
+        data: {
+          orderId: existing.id,
+          provider: "pending",
+          status: PaymentStatus.PENDING,
+          amount: total,
+          currency: "ZAR",
+          metadata: nextMetadata as Prisma.InputJsonValue,
+        },
+      });
+    }
 
-    const variantRecord = await db.productVariant.findUniqueOrThrow({
-      where: { id: stock.variant.id },
-      select: { productId: true },
-    });
-
-    const checkoutToken = createCheckoutToken();
-    const order = await db.order.create({
+    const order = await tx.order.update({
+      where: { id: existing.id },
       data: {
-        number: createOrderNumber(),
         customerId: dbCustomer.id,
-        customerEmail: customer.email,
+        customerEmail: details.customer.email,
         customerName,
-        customerPhone: customer.phone,
+        customerPhone: details.customer.phone,
         shippingAddress,
         billingAddress,
-        paymentStatus: PaymentStatus.PENDING,
-        fulfilmentStatus: FulfilmentStatus.UNFULFILLED,
-        status: OrderStatus.OPEN,
-        currency: "ZAR",
         subtotal,
         shippingTotal: shipping.price,
         total,
         shippingMethod: shipping.id,
         internalNotes: "Awaiting payment confirmation.",
-        items: {
-          create: [
-            {
-              productId: variantRecord.productId,
-              variantId: stock.variant.id,
-              productName: "100% Cotton Corduroy Dungarees",
-              sku: stock.variant.sku,
-              colour: stock.variant.colourName,
-              size: stock.variant.sizeName,
-              unitPrice,
-              quantity: input.quantity,
-              lineTotal: subtotal,
-            },
-          ],
-        },
-        payments: {
-          create: [
-            {
-              provider: "pending",
-              status: PaymentStatus.PENDING,
-              amount: total,
-              currency: "ZAR",
-              metadata: { checkoutToken },
-            },
-          ],
-        },
       },
-      include: {
-        items: true,
-      },
+      include: { items: true },
     });
-
-    const reservation = await reserveStockForOrder({
-      orderId: order.id,
-      variantId: stock.variant.id,
-      quantity: input.quantity,
-    });
-
-    if (!reservation.ok) {
-      await db.order.update({
-        where: { id: order.id },
-        data: {
-          status: OrderStatus.CANCELLED,
-          paymentStatus: PaymentStatus.CANCELLED,
-          fulfilmentStatus: FulfilmentStatus.CANCELLED,
-          cancelledAt: new Date(),
-        },
-      });
-      return {
-        ok: false as const,
-        code: "out_of_stock" as const,
-        message: reservation.message,
-      };
-    }
 
     return {
       ok: true as const,
+      reused: true,
       checkoutToken,
-      order: {
-        id: order.id,
-        number: order.number,
-        createdAt: order.createdAt.toISOString(),
-        status: "awaiting_payment" as const,
-        customer,
-        shippingAddress,
-        billingAddress,
-        billingSameAsShipping: input.billingSameAsShipping,
-        shippingMethodId: shipping.id,
-        shippingPrice: shipping.price,
-        line: {
-          productName: "100% Cotton Corduroy Dungarees",
-          colour: stock.variant.colourName,
-          size: stock.variant.sizeName,
-          quantity: input.quantity,
-          unitPrice,
-          sku: stock.variant.sku,
-        },
-        subtotal,
-        total,
-        currency: "ZAR",
-        estimatedDispatch: "Dispatch timing to be confirmed",
-        paymentNote: "Awaiting payment confirmation.",
-      },
+      order: mapOrder(order, checkoutToken),
     };
+  }
+
+  const checkoutToken = createCheckoutToken();
+  const order = await tx.order.create({
+    data: {
+      number: createOrderNumber(),
+      checkoutKey: details.checkoutKey,
+      customerId: dbCustomer.id,
+      customerEmail: details.customer.email,
+      customerName,
+      customerPhone: details.customer.phone,
+      shippingAddress,
+      billingAddress,
+      paymentStatus: PaymentStatus.PENDING,
+      fulfilmentStatus: FulfilmentStatus.UNFULFILLED,
+      status: OrderStatus.OPEN,
+      currency: "ZAR",
+      subtotal,
+      shippingTotal: shipping.price,
+      total,
+      shippingMethod: shipping.id,
+      internalNotes: "Awaiting payment confirmation.",
+      items: {
+        create: [itemData],
+      },
+      payments: {
+        create: [
+          {
+            provider: "pending",
+            status: PaymentStatus.PENDING,
+            amount: total,
+            currency: "ZAR",
+            metadata: { checkoutToken },
+          },
+        ],
+      },
+    },
+    include: { items: true },
+  });
+
+  const reservation = await syncOrderReservationWithClient(tx, {
+    orderId: order.id,
+    variantId: variant.id,
+    quantity: details.quantity,
+  });
+  if (!reservation.ok) {
+    throw new StockUnavailableError(reservation.message);
+  }
+
+  return {
+    ok: true as const,
+    reused: false,
+    checkoutToken,
+    order: mapOrder(order, checkoutToken),
+  };
+}
+
+export async function createOrder(input: CreateOrderInput) {
+  const parsed = checkoutDetailsSchema.safeParse({
+    checkoutKey: input.checkoutKey,
+    customer: input.customer,
+    shippingAddress: {
+      ...input.shippingAddress,
+      country: "South Africa",
+    },
+    billingSameAsShipping: input.billingSameAsShipping,
+    billingAddress: input.billingAddress
+      ? { ...input.billingAddress, country: "South Africa" as const }
+      : undefined,
+    shippingMethodId: input.shippingMethodId,
+    colour: input.colour,
+    size: input.size,
+    quantity: input.quantity,
+  });
+
+  if (!parsed.success) {
+    const fields = flattenCheckoutFieldErrors(parsed.error);
+    return {
+      ok: false as const,
+      code: "validation" as const,
+      message: Object.values(fields)[0] ?? "Check the highlighted fields.",
+      fields,
+    };
+  }
+
+  const shipping = getShippingMethod(parsed.data.shippingMethodId);
+  if (!shipping) {
+    return {
+      ok: false as const,
+      code: "validation" as const,
+      message: "Select a delivery method.",
+    };
+  }
+
+  try {
+    const result = await db.$transaction((tx) =>
+      upsertCheckoutInTransaction(tx, parsed.data, shipping),
+    );
+    revalidateStorefrontCatalogue();
+    return result;
   } catch (error) {
+    if (error instanceof StockUnavailableError) {
+      return {
+        ok: false as const,
+        code: "out_of_stock" as const,
+        message: error.message,
+      };
+    }
+    if (error instanceof CheckoutConflictError) {
+      return {
+        ok: false as const,
+        code: "conflict" as const,
+        message: error.message,
+      };
+    }
+    if (isUniqueConstraint(error)) {
+      try {
+        const result = await db.$transaction((tx) =>
+          upsertCheckoutInTransaction(tx, parsed.data, shipping),
+        );
+        revalidateStorefrontCatalogue();
+        return result;
+      } catch (retryError) {
+        if (retryError instanceof StockUnavailableError) {
+          return {
+            ok: false as const,
+            code: "out_of_stock" as const,
+            message: retryError.message,
+          };
+        }
+        if (retryError instanceof CheckoutConflictError) {
+          return {
+            ok: false as const,
+            code: "conflict" as const,
+            message: retryError.message,
+          };
+        }
+      }
+    }
     return {
       ok: false as const,
       code: "validation" as const,
@@ -310,6 +463,7 @@ function mapOrder(
     shippingAddress: unknown;
     billingAddress: unknown;
     shippingMethod: string | null;
+    checkoutKey?: string | null;
     shippingTotal: { toString(): string } | number;
     subtotal: { toString(): string } | number;
     total: { toString(): string } | number;
@@ -365,6 +519,7 @@ function mapOrder(
     currency: order.currency,
     estimatedDispatch: "Dispatch timing to be confirmed",
     paymentNote: "Awaiting payment confirmation.",
+    checkoutKey: "checkoutKey" in order ? (order.checkoutKey as string | null) : null,
     checkoutToken,
   };
 }
@@ -394,7 +549,12 @@ export async function getCheckoutOrder(input: {
 
   if (!tokensMatch(token, input.checkoutToken)) return null;
 
-  return mapOrder(order, token);
+  const reusable = getReusablePaystackRedirect(order);
+  return {
+    ...mapOrder(order, token),
+    paymentReady: Boolean(reusable),
+    authorizationUrl: reusable?.authorizationUrl ?? null,
+  };
 }
 
 export async function assertCheckoutAccess(input: {
@@ -416,24 +576,38 @@ export async function assertCheckoutAccess(input: {
 }
 
 export async function cancelOrder(id: string) {
-  const order = await db.order.findUnique({ where: { id } });
-  if (!order || order.status === OrderStatus.CANCELLED) return null;
-  if (order.paymentStatus === PaymentStatus.PAID) {
-    throw new Error("Paid orders cannot be cancelled from checkout.");
-  }
+  const result = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM orders WHERE id = ${id} FOR UPDATE`;
+    const current = await tx.order.findUnique({ where: { id } });
+    if (!current || current.status === OrderStatus.CANCELLED) return null;
+    if (current.paymentStatus === PaymentStatus.PAID) {
+      throw new Error("Paid orders cannot be cancelled from checkout.");
+    }
 
-  await releaseOrderReservation(id);
-  const updated = await db.order.update({
-    where: { id },
-    data: {
-      status: OrderStatus.CANCELLED,
-      paymentStatus: PaymentStatus.CANCELLED,
-      fulfilmentStatus: FulfilmentStatus.CANCELLED,
-      cancelledAt: new Date(),
-    },
+    const updated = await tx.order.updateMany({
+      where: {
+        id,
+        status: { not: OrderStatus.CANCELLED },
+        paymentStatus: { not: PaymentStatus.PAID },
+      },
+      data: {
+        status: OrderStatus.CANCELLED,
+        paymentStatus: PaymentStatus.CANCELLED,
+        fulfilmentStatus: FulfilmentStatus.CANCELLED,
+        cancelledAt: new Date(),
+      },
+    });
+    if (updated.count !== 1) {
+      throw new Error("Paid orders cannot be cancelled from checkout.");
+    }
+
+    await releaseOrderReservationWithClient(tx, id);
+    return true;
   });
 
-  return getOrder(updated.id);
+  if (!result) return null;
+  revalidateStorefrontCatalogue();
+  return getOrder(id);
 }
 
 export async function cancelCheckoutOrder(input: {
@@ -631,36 +805,46 @@ export async function listOrdersForAdmin(input?: {
         ? OrderStatus.CANCELLED
         : OrderStatus.OPEN;
 
-  const orders = await db.order.findMany({
-    where: {
-      status: statusFilter,
-      AND: searchWhere ? [searchWhere] : undefined,
+  const orderInclude = {
+    items: true,
+    fulfilments: {
+      orderBy: { createdAt: "desc" as const },
+      take: 1,
     },
-    include: {
-      items: true,
-      fulfilments: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-      returnRequests: {
-        select: { id: true, reference: true, status: true },
-      },
+    returnRequests: {
+      select: { id: true, reference: true, status: true },
     },
-    orderBy:
-      view === "open"
-        ? { createdAt: "asc" }
-        : { createdAt: "desc" },
-    take: view === "open" ? Math.max(take * 3, 150) : take,
-    ...(input?.cursor && view !== "open"
-      ? { cursor: { id: input.cursor }, skip: 1 }
-      : {}),
-  });
+  };
 
   if (view === "open") {
+    const held = await db.order.findMany({
+      where: {
+        status: OrderStatus.OPEN,
+        inventoryHold: true,
+        AND: searchWhere ? [searchWhere] : undefined,
+      },
+      include: orderInclude,
+      orderBy: { createdAt: "asc" },
+      take,
+    });
+    const remaining = Math.max(take - held.length, 0);
+    const rest =
+      remaining === 0
+        ? []
+        : await db.order.findMany({
+            where: {
+              status: OrderStatus.OPEN,
+              inventoryHold: false,
+              AND: searchWhere ? [searchWhere] : undefined,
+            },
+            include: orderInclude,
+            orderBy: { createdAt: "asc" },
+            take: Math.max(remaining * 3, remaining),
+          });
     const { getOpenOrderSortPriority } = await import(
       "@/lib/commerce/order-next-action"
     );
-    orders.sort((a, b) => {
+    rest.sort((a, b) => {
       const pa = getOpenOrderSortPriority(a);
       const pb = getOpenOrderSortPriority(b);
       if (pa !== pb) return pa - pb;
@@ -668,9 +852,22 @@ export async function listOrdersForAdmin(input?: {
     });
     return {
       kind: "orders" as const,
-      rows: orders.slice(0, take),
+      rows: [...held, ...rest.slice(0, remaining)],
     };
   }
+
+  const orders = await db.order.findMany({
+    where: {
+      status: statusFilter,
+      AND: searchWhere ? [searchWhere] : undefined,
+    },
+    include: orderInclude,
+    orderBy: { createdAt: "desc" },
+    take,
+    ...(input?.cursor
+      ? { cursor: { id: input.cursor }, skip: 1 }
+      : {}),
+  });
 
   return { kind: "orders" as const, rows: orders };
 }

@@ -39,6 +39,7 @@ export function PurchaseBeacon({ orderNumber, paid }: PurchaseBeaconProps) {
             transaction_id: orderNumber,
           },
     });
+    window.dispatchEvent(new Event("plebs:clear-cart"));
   }, [paid, orderNumber]);
 
   return null;

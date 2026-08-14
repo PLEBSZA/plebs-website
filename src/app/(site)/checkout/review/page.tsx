@@ -1,6 +1,11 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { CheckoutReview } from "@/components/checkout/CheckoutReview";
+import {
+  CHECKOUT_COOKIE_NAME,
+  parseCheckoutCookieValue,
+} from "@/lib/checkout/cookie";
 import { getPaystackMode } from "@/lib/commerce/paystack";
 import { createPageMetadata } from "@/lib/metadata";
 import { getCheckoutOrder } from "@/lib/orders";
@@ -19,8 +24,18 @@ async function CheckoutReviewContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const orderNumber = typeof params.order === "string" ? params.order : "";
-  const checkoutToken = typeof params.token === "string" ? params.token : "";
+  const cookieStore = await cookies();
+  const fromCookie = parseCheckoutCookieValue(
+    cookieStore.get(CHECKOUT_COOKIE_NAME)?.value,
+  );
+  const orderNumber =
+    (typeof params.order === "string" ? params.order : "") ||
+    fromCookie?.orderNumber ||
+    "";
+  const checkoutToken =
+    (typeof params.token === "string" ? params.token : "") ||
+    fromCookie?.checkoutToken ||
+    "";
   const paymentMode = getPaystackMode();
 
   if (!orderNumber || !checkoutToken) {
@@ -60,6 +75,9 @@ async function CheckoutReviewContent({
           order={order}
           checkoutToken={checkoutToken}
           paymentMode={paymentMode}
+          uiState={order.paymentReady ? "PAYMENT_READY" : "PREPARING"}
+          paymentReady={order.paymentReady}
+          authorizationUrl={order.authorizationUrl}
         />
       </div>
     </section>

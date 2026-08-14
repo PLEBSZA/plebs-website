@@ -8,11 +8,13 @@ import {
 } from "@/generated/prisma/client";
 import { recordAuditEvent } from "@/lib/admin/audit";
 import {
-  convertOrderReservation,
-  releaseOrderReservation,
+  PAID_AFTER_EXPIRED_RESERVATION_NOTE,
+  releaseOrderReservationWithClient,
+  settlePaidOrderReservationWithClient,
 } from "@/lib/commerce/inventory-reservation";
 import { db } from "@/lib/db";
 import { sendOrderPaidEmails } from "@/lib/email/order-emails";
+import { provisionPaidOrderAccount } from "@/lib/account/provision-paid-order";
 
 async function upsertFulfilment(
   orderId: string,
@@ -90,14 +92,11 @@ export async function markOrderPaid(input: {
   actorId?: string;
 }) {
   const { order, newlyPaid } = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM orders WHERE id = ${input.orderId} FOR UPDATE`;
     const current = await tx.order.findUniqueOrThrow({
       where: { id: input.orderId },
       include: { payments: true },
     });
-
-    if (current.status === OrderStatus.CANCELLED) {
-      throw new Error("Cannot mark a cancelled order as paid.");
-    }
 
     if (current.paymentStatus === PaymentStatus.PAID) {
       return { order: current, newlyPaid: false };
@@ -143,19 +142,29 @@ export async function markOrderPaid(input: {
       });
     }
 
+    const settlement = await settlePaidOrderReservationWithClient(tx, current.id);
+    const restockNote = settlement.restockRequired
+      ? PAID_AFTER_EXPIRED_RESERVATION_NOTE
+      : null;
+    const nextNotes = restockNote
+      ? [current.internalNotes, restockNote].filter(Boolean).join("\n")
+      : current.internalNotes?.includes("Awaiting payment confirmation")
+        ? null
+        : current.internalNotes;
+
     const updated = await tx.order.update({
       where: { id: current.id },
       data: {
+        status: OrderStatus.OPEN,
+        cancelledAt: null,
         paymentStatus: PaymentStatus.PAID,
         fulfilmentStatus:
-          current.fulfilmentStatus === FulfilmentStatus.UNFULFILLED
+          current.fulfilmentStatus === FulfilmentStatus.UNFULFILLED ||
+          current.fulfilmentStatus === FulfilmentStatus.CANCELLED
             ? FulfilmentStatus.PROCESSING
             : current.fulfilmentStatus,
-        internalNotes: current.internalNotes?.includes(
-          "Awaiting payment confirmation",
-        )
-          ? null
-          : current.internalNotes,
+        inventoryHold: settlement.restockRequired,
+        internalNotes: nextNotes,
       },
     });
 
@@ -163,12 +172,10 @@ export async function markOrderPaid(input: {
   });
 
   if (newlyPaid) {
-    const activeReservations = await db.inventoryReservation.count({
-      where: { orderId: order.id, status: "ACTIVE" },
-    });
-    if (activeReservations > 0) {
-      await convertOrderReservation(order.id);
-    }
+    const { revalidateStorefrontCatalogue } = await import(
+      "@/lib/commerce/revalidate-storefront"
+    );
+    revalidateStorefrontCatalogue();
 
     await recordAuditEvent({
       actorId: input.actorId,
@@ -181,6 +188,15 @@ export async function markOrderPaid(input: {
         providerReference: input.providerReference ?? null,
       },
     });
+
+    try {
+      await provisionPaidOrderAccount(order.id);
+    } catch (error) {
+      console.error(
+        "Order was paid, but the customer account could not be provisioned:",
+        error instanceof Error ? error.message : "Unknown account error",
+      );
+    }
   }
 
   // Safe on callback + webhook retries: payment metadata + Resend
@@ -211,6 +227,11 @@ export async function markOrderPacked(input: {
   if (order.paymentStatus !== PaymentStatus.PAID) {
     throw new Error("Orders must be paid before packing.");
   }
+  if (order.inventoryHold) {
+    throw new Error(
+      "This order is on inventory hold. Restock the size and retry reservation before packing.",
+    );
+  }
 
   const fulfilment = await upsertFulfilment(order.id, {
     status: FulfilmentStatus.PACKED,
@@ -233,6 +254,60 @@ export async function markOrderPacked(input: {
   return fulfilment;
 }
 
+export async function resolveInventoryHold(input: {
+  orderId: string;
+  userId: string;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM orders WHERE id = ${input.orderId} FOR UPDATE`;
+    const current = await tx.order.findUniqueOrThrow({
+      where: { id: input.orderId },
+    });
+
+    if (current.status === OrderStatus.CANCELLED) {
+      throw new Error("Cancelled orders cannot leave inventory hold.");
+    }
+    if (current.paymentStatus !== PaymentStatus.PAID) {
+      throw new Error("Only paid orders can leave inventory hold.");
+    }
+    if (!current.inventoryHold) {
+      return { order: current, resolved: false as const };
+    }
+
+    const settlement = await settlePaidOrderReservationWithClient(
+      tx,
+      current.id,
+    );
+    if (settlement.restockRequired) {
+      throw new Error(
+        "Stock is still unavailable for this order. Restock the size, then retry.",
+      );
+    }
+
+    const updated = await tx.order.update({
+      where: { id: current.id },
+      data: { inventoryHold: false },
+    });
+    return { order: updated, resolved: true as const };
+  });
+
+  if (result.resolved) {
+    const { revalidateStorefrontCatalogue } = await import(
+      "@/lib/commerce/revalidate-storefront"
+    );
+    revalidateStorefrontCatalogue();
+
+    await recordAuditEvent({
+      actorId: input.userId,
+      action: "order.inventory_hold_resolved",
+      entityType: "order",
+      entityId: result.order.id,
+    });
+  }
+
+  return result.order;
+}
+
 export async function fulfilOrder(input: {
   orderId: string;
   userId: string;
@@ -250,6 +325,11 @@ export async function fulfilOrder(input: {
   }
   if (order.status === OrderStatus.CANCELLED) {
     throw new Error("Cancelled orders cannot be fulfilled.");
+  }
+  if (order.inventoryHold) {
+    throw new Error(
+      "This order is on inventory hold. Restock the size and retry reservation before dispatch.",
+    );
   }
 
   const fulfilment = await upsertFulfilment(order.id, {
@@ -639,43 +719,53 @@ export async function cancelOrderAdmin(input: {
   userId: string;
   reason?: string;
 }) {
-  const order = await db.order.findUniqueOrThrow({
-    where: { id: input.orderId },
+  const updated = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM orders WHERE id = ${input.orderId} FOR UPDATE`;
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: input.orderId },
+    });
+
+    if (order.status === OrderStatus.CANCELLED) return order;
+    if (
+      order.fulfilmentStatus === FulfilmentStatus.FULFILLED ||
+      order.fulfilmentStatus === FulfilmentStatus.DELIVERED
+    ) {
+      throw new Error(
+        "Fulfilled or delivered orders cannot be cancelled. Create a return instead.",
+      );
+    }
+
+    if (order.paymentStatus !== PaymentStatus.PAID) {
+      await releaseOrderReservationWithClient(tx, order.id);
+    }
+
+    return tx.order.update({
+      where: { id: order.id },
+      data: {
+        status: OrderStatus.CANCELLED,
+        paymentStatus:
+          order.paymentStatus === PaymentStatus.PAID
+            ? order.paymentStatus
+            : PaymentStatus.CANCELLED,
+        fulfilmentStatus: FulfilmentStatus.CANCELLED,
+        cancelledAt: new Date(),
+        internalNotes: [order.internalNotes, input.reason]
+          .filter(Boolean)
+          .join("\n"),
+      },
+    });
   });
 
-  if (order.status === OrderStatus.CANCELLED) return order;
-  if (
-    order.fulfilmentStatus === FulfilmentStatus.FULFILLED ||
-    order.fulfilmentStatus === FulfilmentStatus.DELIVERED
-  ) {
-    throw new Error(
-      "Fulfilled or delivered orders cannot be cancelled. Create a return instead.",
-    );
-  }
-
-  await releaseOrderReservation(order.id);
-
-  const updated = await db.order.update({
-    where: { id: order.id },
-    data: {
-      status: OrderStatus.CANCELLED,
-      paymentStatus:
-        order.paymentStatus === PaymentStatus.PAID
-          ? order.paymentStatus
-          : PaymentStatus.CANCELLED,
-      fulfilmentStatus: FulfilmentStatus.CANCELLED,
-      cancelledAt: new Date(),
-      internalNotes: [order.internalNotes, input.reason]
-        .filter(Boolean)
-        .join("\n"),
-    },
-  });
+  const { revalidateStorefrontCatalogue } = await import(
+    "@/lib/commerce/revalidate-storefront"
+  );
+  revalidateStorefrontCatalogue();
 
   await recordAuditEvent({
     actorId: input.userId,
     action: "order.cancelled",
     entityType: "order",
-    entityId: order.id,
+    entityId: updated.id,
     reason: input.reason,
   });
 

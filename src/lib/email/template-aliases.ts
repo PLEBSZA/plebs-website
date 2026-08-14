@@ -15,4 +15,7 @@ export const emailTemplateAliases = {
   backInStock: "plebs-back-in-stock",
   editorialAnnouncement: "plebs-editorial-announcement",
   returnRequestOwner: "plebs-return-request-owner",
+  accountSetup: "plebs-account-setup",
+  passwordReset: "plebs-password-reset",
+  newsletterConfirm: "plebs-newsletter-confirm",
 } as const;

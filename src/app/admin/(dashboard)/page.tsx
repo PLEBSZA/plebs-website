@@ -26,6 +26,7 @@ export default async function AdminOverviewPage() {
     const next = getOrderNextAction(order);
     return (
       next === "Awaiting payment" ||
+      next === "Inventory hold" ||
       next === "Ready to pack" ||
       next === "Ready to dispatch" ||
       next === "Confirm delivery" ||

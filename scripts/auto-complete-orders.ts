@@ -5,8 +5,8 @@
  * Requires ORDER_AUTO_COMPLETE_QUIET_PERIOD_DAYS (owner decision; no default).
  *
  * Prefer the HTTP trigger when the app is running:
- *   POST /api/cron/auto-complete-orders
- *   Authorization: Bearer $ORDER_AUTO_COMPLETE_CRON_SECRET
+ *   GET or POST /api/cron/auto-complete-orders
+ *   Authorization: Bearer $CRON_SECRET or $ORDER_AUTO_COMPLETE_CRON_SECRET
  *   ?live=1 to write (omit for dry-run)
  *
  *   npx tsx scripts/auto-complete-orders.ts

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { AdminRole } from "@/generated/prisma/client";
+import { isAdminRole } from "@/lib/account/roles";
 
 export type AdminPermission =
   | "admin:access"
@@ -19,7 +20,9 @@ export type AdminPermission =
   | "media:write"
   | "users:manage"
   | "audit:read"
-  | "settings:manage";
+  | "settings:manage"
+  | "customers:read"
+  | "customers:manage";
 
 const ROLE_PERMISSIONS: Record<AdminRole, ReadonlyArray<AdminPermission>> = {
   OWNER: [
@@ -40,6 +43,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlyArray<AdminPermission>> = {
     "users:manage",
     "audit:read",
     "settings:manage",
+    "customers:read",
+    "customers:manage",
   ],
   OPERATIONS_ADMIN: [
     "admin:access",
@@ -57,6 +62,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlyArray<AdminPermission>> = {
     "restock:notify",
     "media:write",
     "audit:read",
+    "customers:read",
+    "customers:manage",
   ],
   FULFILMENT_USER: [
     "admin:access",
@@ -65,6 +72,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlyArray<AdminPermission>> = {
     "orders:read",
     "orders:fulfil",
     "restock:read",
+    "customers:read",
   ],
   CONTENT_EDITOR: [
     "admin:access",
@@ -74,6 +82,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, ReadonlyArray<AdminPermission>> = {
     "media:write",
     "restock:read",
   ],
+  CUSTOMER: [],
 };
 
 export function permissionsForRole(role: AdminRole): ReadonlyArray<AdminPermission> {
@@ -84,6 +93,7 @@ export function hasPermission(
   role: AdminRole,
   permission: AdminPermission,
 ): boolean {
+  if (!isAdminRole(role)) return false;
   return permissionsForRole(role).includes(permission);
 }
 

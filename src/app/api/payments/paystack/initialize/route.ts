@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       authorizationUrl: result.authorizationUrl,
       reference: result.reference,
       orderNumber: result.orderNumber,
+      reused: result.reused,
     });
   } catch {
     return NextResponse.json(

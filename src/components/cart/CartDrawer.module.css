@@ -10,12 +10,24 @@
 .drawer {
   display: flex;
   flex-direction: column;
-  width: min(100%, 26rem);
-  min-height: 100%;
+  width: min(100%, 24rem);
+  height: 100dvh;
+  max-height: 100dvh;
   padding: var(--space-6);
   background: var(--color-cream-50);
   box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.footer {
+  flex-shrink: 0;
+  padding-top: var(--space-4);
 }
 
 .heading {
@@ -146,7 +158,6 @@
   justify-content: center;
   width: 100%;
   min-height: 3.25rem;
-  margin-top: auto;
   border-radius: var(--radius-small);
   background: var(--color-forest-900);
   color: var(--color-cream-50);

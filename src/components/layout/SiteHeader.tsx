@@ -8,8 +8,13 @@ import { useCart } from "@/components/cart/CartProvider";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { MobileMenu } from "./MobileMenu";
 import styles from "./SiteHeader.module.css";
+import type { ReactNode } from "react";
 
-export function SiteHeader() {
+export function SiteHeader({
+  accountNav,
+}: {
+  accountNav?: ReactNode;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const { count, open: cartOpen, openCart } = useCart();
@@ -68,21 +73,24 @@ export function SiteHeader() {
           </ul>
         </nav>
 
-        <button
-          type="button"
-          className={styles.cartButton}
-          aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
-          aria-expanded={cartOpen}
-          aria-controls="cart-drawer"
-          onClick={openCart}
-          data-event="view_cart"
-        >
-          Cart
-          <span className={styles.cartCount}>
-            <span className="visually-hidden">Items in cart: </span>
-            {count}
-          </span>
-        </button>
+        <div className={styles.headerActions}>
+          <span className={styles.headerAccount}>{accountNav}</span>
+          <button
+            type="button"
+            className={styles.cartButton}
+            aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
+            aria-expanded={cartOpen}
+            aria-controls="cart-drawer"
+            onClick={openCart}
+            data-event="view_cart"
+          >
+            Cart
+            <span className={styles.cartCount}>
+              <span className="visually-hidden">Items in cart: </span>
+              {count}
+            </span>
+          </button>
+        </div>
       </div>
 
       <MobileMenu

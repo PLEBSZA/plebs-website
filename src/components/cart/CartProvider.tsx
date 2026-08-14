@@ -4,9 +4,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
+import {
+  CART_STORAGE_KEY,
+  parseCartSnapshot,
+} from "@/lib/checkout/policy";
 import {
   getCatalogueSize,
   getDefaultPurchasableCatalogueSize,
@@ -54,6 +59,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const catalogue = useStorefrontCatalogue();
   const [line, setLine] = useState<CartLine | null>(null);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = parseCartSnapshot(sessionStorage.getItem(CART_STORAGE_KEY));
+    if (saved) setLine(saved);
+
+    function onClearCart() {
+      setLine(null);
+      sessionStorage.removeItem(CART_STORAGE_KEY);
+      try {
+        sessionStorage.removeItem("plebs:checkout-key");
+      } catch {
+        /* ignore */
+      }
+    }
+
+    window.addEventListener("plebs:clear-cart", onClearCart);
+    return () => window.removeEventListener("plebs:clear-cart", onClearCart);
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (line) {
+        sessionStorage.setItem(
+          CART_STORAGE_KEY,
+          JSON.stringify({
+            colour: line.colour,
+            size: line.size,
+            quantity: line.quantity,
+            sku: line.sku,
+            unitPrice: line.unitPrice,
+            variantId: line.variantId,
+          }),
+        );
+      } else {
+        sessionStorage.removeItem(CART_STORAGE_KEY);
+      }
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
+  }, [line]);
 
   const openCart = useCallback(() => {
     setOpen(true);
@@ -180,6 +225,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => {
     setLine(null);
+    try {
+      sessionStorage.removeItem(CART_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const maxQuantity = line

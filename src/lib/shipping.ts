@@ -15,7 +15,7 @@ export const shippingMethods: ShippingMethod[] = [
   {
     id: "standard",
     name: "Standard Delivery",
-    description: "Tracked courier delivery within South Africa.",
+    description: "Free tracked courier delivery within South Africa.",
     estimatedArrival: "Timing to be confirmed",
     price: 0,
     trackingIncluded: true,

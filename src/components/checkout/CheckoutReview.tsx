@@ -7,12 +7,13 @@ import { formatMoney } from "@/lib/money";
 import { productData } from "@/lib/product";
 import { getShippingMethod } from "@/lib/shipping";
 import { stashPendingPurchase } from "@/lib/analytics/emit";
+import { payEnabled, type CheckoutUiState } from "@/lib/checkout/policy";
 import styles from "./CheckoutReview.module.css";
 
 export type CheckoutReviewOrder = {
   id: string;
   number: string;
-  status: "awaiting_payment" | "paid" | "cancelled";
+  status: "awaiting_payment" | "paid" | "cancelled" | "preparing";
   customer: {
     email: string;
     firstName: string;
@@ -47,26 +48,101 @@ export type CheckoutReviewOrder = {
 
 type CheckoutReviewProps = {
   order: CheckoutReviewOrder;
-  checkoutToken: string;
+  checkoutToken?: string;
   paymentMode: "test" | "live" | "unconfigured";
+  uiState: CheckoutUiState;
+  paymentReady: boolean;
+  authorizationUrl?: string | null;
+  preparationError?: string | null;
+  onEdit?: () => void;
+  onRetryPrepare?: () => void;
 };
 
 export function CheckoutReview({
   order,
   checkoutToken,
   paymentMode,
+  uiState,
+  paymentReady,
+  authorizationUrl,
+  preparationError,
+  onEdit,
+  onRetryPrepare,
 }: CheckoutReviewProps) {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "paying" | "cancelling" | "error">(
-    "idle",
-  );
-  const [error, setError] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const [retryUrl, setRetryUrl] = useState<string | null>(null);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const shipping = getShippingMethod(order.shippingMethodId);
+  const resolvedUrl = retryUrl ?? authorizationUrl;
+  const canPay =
+    Boolean(resolvedUrl) &&
+    paymentMode !== "unconfigured" &&
+    (payEnabled(uiState, paymentReady) || Boolean(retryUrl));
 
   async function handlePayNow() {
-    setStatus("paying");
-    setError("");
+    if (!resolvedUrl || !canPay) return;
+    const payStarted = performance.now();
 
+    stashPendingPurchase({
+      transaction_id: order.number,
+      currency: order.currency,
+      value: order.total,
+      items: [
+        {
+          item_id: order.line.sku ?? order.line.productName,
+          item_name: order.line.productName,
+          item_variant: `${order.line.colour} / ${order.line.size}`,
+          price: order.line.unitPrice,
+          quantity: order.line.quantity,
+        },
+      ],
+    });
+
+    window.dispatchEvent(
+      new CustomEvent("plebs:commerce-event", {
+        detail: {
+          event: "add_payment_info",
+          selected_size: order.line.size,
+          colour: order.line.colour,
+          quantity: order.line.quantity,
+          variant_sku: order.line.sku,
+          ecommerce: {
+            currency: order.currency,
+            value: order.total,
+            payment_type: "Paystack",
+            items: [
+              {
+                item_id: order.line.sku ?? order.line.productName,
+                item_name: order.line.productName,
+                item_variant: `${order.line.colour} / ${order.line.size}`,
+                price: order.line.unitPrice,
+                quantity: order.line.quantity,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    window.dispatchEvent(
+      new CustomEvent("plebs:commerce-event", {
+        detail: {
+          event: "pay_click_to_navigation_ms",
+          value: String(Math.round(performance.now() - payStarted)),
+        },
+      }),
+    );
+
+    window.location.assign(resolvedUrl);
+  }
+
+  async function retryInitialize() {
+    if (!order.id || !checkoutToken) {
+      onRetryPrepare?.();
+      return;
+    }
+    setRetrying(true);
+    setRetryError(null);
     try {
       const response = await fetch("/api/payments/paystack/initialize/", {
         method: "POST",
@@ -76,72 +152,30 @@ export function CheckoutReview({
           checkoutToken,
         }),
       });
-
       const result = (await response.json()) as {
         authorizationUrl?: string;
         message?: string;
       };
-
       if (!response.ok || !result.authorizationUrl) {
-        setStatus("error");
-        setError(result.message ?? "Unable to open Paystack checkout.");
+        setRetryError(result.message ?? "Unable to prepare payment.");
         return;
       }
-
-      stashPendingPurchase({
-        transaction_id: order.number,
-        currency: order.currency,
-        value: order.total,
-        items: [
-          {
-            item_id: order.line.sku ?? order.line.productName,
-            item_name: order.line.productName,
-            item_variant: `${order.line.colour} / ${order.line.size}`,
-            price: order.line.unitPrice,
-            quantity: order.line.quantity,
-          },
-        ],
-      });
-
-      window.dispatchEvent(
-        new CustomEvent("plebs:commerce-event", {
-          detail: {
-            event: "add_payment_info",
-            selected_size: order.line.size,
-            colour: order.line.colour,
-            quantity: order.line.quantity,
-            variant_sku: order.line.sku,
-            ecommerce: {
-              currency: order.currency,
-              value: order.total,
-              payment_type: "Paystack",
-              items: [
-                {
-                  item_id: order.line.sku ?? order.line.productName,
-                  item_name: order.line.productName,
-                  item_variant: `${order.line.colour} / ${order.line.size}`,
-                  price: order.line.unitPrice,
-                  quantity: order.line.quantity,
-                },
-              ],
-            },
-          },
-        }),
-      );
-
-      window.location.href = result.authorizationUrl;
+      setRetryUrl(result.authorizationUrl);
     } catch {
-      setStatus("error");
-      setError("Something went wrong connecting to Paystack.");
+      setRetryError("Paystack could not be reached. Try again.");
+    } finally {
+      setRetrying(false);
     }
   }
 
   async function handleCancel() {
-    setStatus("cancelling");
-    setError("");
+    if (!order.id || !checkoutToken || order.status === "preparing") {
+      router.push(productData.path);
+      return;
+    }
 
     try {
-      const response = await fetch("/api/checkout/cancel/", {
+      await fetch("/api/checkout/cancel/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -149,19 +183,8 @@ export function CheckoutReview({
           checkoutToken,
         }),
       });
-
-      const result = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        setStatus("error");
-        setError(result.message ?? "Unable to cancel this order.");
-        return;
-      }
-
+    } finally {
       router.push(productData.path);
-    } catch {
-      setStatus("error");
-      setError("Something went wrong while cancelling.");
     }
   }
 
@@ -170,7 +193,7 @@ export function CheckoutReview({
       <div className={styles.shell}>
         <article className={styles.card}>
           <p className={styles.step}>Checkout</p>
-          <h1>Order Cancelled</h1>
+          <h1>Checkout cancelled</h1>
           <p className={styles.lead}>
             Order {order.number} has been cancelled and stock has been released.
           </p>
@@ -188,9 +211,7 @@ export function CheckoutReview({
         <article className={styles.card}>
           <p className={styles.step}>Checkout</p>
           <h1>Already Paid</h1>
-          <p className={styles.lead}>
-            Order {order.number} is already paid.
-          </p>
+          <p className={styles.lead}>Order {order.number} is already paid.</p>
           <Link
             className={styles.primary}
             href={`/order-confirmation/?order=${encodeURIComponent(order.number)}&paid=true`}
@@ -202,35 +223,44 @@ export function CheckoutReview({
     );
   }
 
+  const statusLabel =
+    uiState === "PAYMENT_READY"
+      ? "Secure payment ready"
+      : uiState === "PREPARATION_ERROR"
+        ? "We could not finish preparing payment"
+        : "Reserving your item…";
+
   return (
     <div className={styles.shell}>
       <article className={styles.card}>
         <p className={styles.step}>Step 2 of 2 · Review & pay</p>
-        <h1>Confirm Your Order</h1>
+        <h1>Review your order</h1>
         <p className={styles.lead}>
-          Check the details below, then pay securely
+          Check the item, total and delivery address, then pay securely
           {paymentMode === "test"
             ? " with Paystack test mode"
             : paymentMode === "live"
               ? " with Paystack"
               : ""}
-          . You won&apos;t be charged until you complete payment on the next
-          screen.
+          .
+        </p>
+        <p className={styles.status} aria-live="polite">
+          {statusLabel}
         </p>
 
-        <dl className={styles.meta}>
-          <div>
-            <dt>Order number</dt>
-            <dd>{order.number}</dd>
-          </div>
-          <div>
-            <dt>Total due</dt>
-            <dd>{formatMoney(order.total, order.currency)}</dd>
-          </div>
-        </dl>
-
         <section className={styles.section}>
-          <h2>Item</h2>
+          <div className={styles.sectionHead}>
+            <h2>Item</h2>
+            {onEdit ? (
+              <button type="button" className={styles.edit} onClick={onEdit}>
+                Edit item
+              </button>
+            ) : (
+              <Link className={styles.edit} href="/checkout/">
+                Edit item
+              </Link>
+            )}
+          </div>
           <div className={styles.item}>
             <div>
               <strong>{order.line.productName}</strong>
@@ -249,16 +279,21 @@ export function CheckoutReview({
         </section>
 
         <section className={styles.section}>
-          <h2>Customer</h2>
+          <div className={styles.sectionHead}>
+            <h2>Delivery</h2>
+            {onEdit ? (
+              <button type="button" className={styles.edit} onClick={onEdit}>
+                Edit details
+              </button>
+            ) : (
+              <Link className={styles.edit} href="/checkout/">
+                Edit details
+              </Link>
+            )}
+          </div>
           <p>
             {order.customer.firstName} {order.customer.lastName}
           </p>
-          <p>{order.customer.email}</p>
-          <p>{order.customer.phone}</p>
-        </section>
-
-        <section className={styles.section}>
-          <h2>Shipping</h2>
           <p>{order.shippingAddress.line1}</p>
           {order.shippingAddress.line2 ? (
             <p>{order.shippingAddress.line2}</p>
@@ -272,21 +307,22 @@ export function CheckoutReview({
           </p>
           <p>{order.shippingAddress.country}</p>
           <p className={styles.muted}>
-            {shipping?.name ?? "Standard Delivery"} ·{" "}
-            {order.shippingPrice === 0
-              ? "Free"
-              : formatMoney(order.shippingPrice, order.currency)}
+            {shipping?.name ?? "Standard Delivery"} · Free tracked delivery in
+            South Africa
+          </p>
+          <p className={styles.muted}>
+            Timing to be confirmed
           </p>
         </section>
 
         <section className={styles.section}>
-          <h2>Totals</h2>
+          <h2>Total</h2>
           <div className={styles.row}>
             <span>Subtotal</span>
             <strong>{formatMoney(order.subtotal, order.currency)}</strong>
           </div>
           <div className={styles.row}>
-            <span>Shipping</span>
+            <span>Delivery</span>
             <strong>
               {order.shippingPrice === 0
                 ? "Free"
@@ -299,9 +335,9 @@ export function CheckoutReview({
           </div>
         </section>
 
-        {error ? (
+        {preparationError || retryError ? (
           <p className={styles.error} role="alert">
-            {error}
+            {retryError ?? preparationError}
           </p>
         ) : null}
 
@@ -309,33 +345,46 @@ export function CheckoutReview({
           <button
             type="button"
             className={styles.primary}
-            onClick={handlePayNow}
-            disabled={
-              paymentMode === "unconfigured" ||
-              status === "paying" ||
-              status === "cancelling"
-            }
+            onClick={() => void handlePayNow()}
+            disabled={!canPay || uiState === "PAYMENT_OPENING"}
           >
-            {status === "paying"
-              ? "Opening Paystack…"
-              : paymentMode === "unconfigured"
-                ? "Payment Unavailable"
-                : "Pay Now"}
+            {paymentMode === "unconfigured"
+              ? "Payment Unavailable"
+              : canPay
+                ? `Pay ${formatMoney(order.total, order.currency)} securely`
+                : "Pay securely"}
           </button>
+          {(uiState === "PREPARATION_ERROR" || (!canPay && order.id && checkoutToken)) &&
+          !retrying ? (
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={() => {
+                if (onRetryPrepare) onRetryPrepare();
+                else void retryInitialize();
+              }}
+            >
+              Try preparing payment again
+            </button>
+          ) : null}
+          {retrying ? (
+            <p className={styles.muted}>Preparing secure payment…</p>
+          ) : null}
           <button
             type="button"
-            className={styles.secondary}
-            onClick={handleCancel}
-            disabled={status === "paying" || status === "cancelling"}
+            className={styles.cancel}
+            onClick={() => void handleCancel()}
           >
-            {status === "cancelling" ? "Cancelling…" : "Cancel Order"}
+            Cancel checkout
           </button>
         </div>
 
         <p className={styles.note}>
           {paymentMode === "unconfigured"
             ? "Paystack is not configured yet, so payment cannot start."
-            : "Pay Now opens the secure Paystack payment page."}
+            : paymentMode === "test"
+              ? "Paystack is in test mode. You will not be charged a live payment."
+              : "Pay opens the secure Paystack payment page."}
         </p>
       </article>
     </div>

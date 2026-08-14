@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  CHECKOUT_COOKIE_NAME,
+  checkoutCookieOptions,
+} from "@/lib/checkout/cookie";
 import { cancelCheckoutOrder } from "@/lib/orders";
 
 export async function POST(request: Request) {
@@ -27,11 +31,16 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       orderId: order.id,
       orderNumber: order.number,
       status: order.status,
     });
+    response.cookies.set(CHECKOUT_COOKIE_NAME, "", {
+      ...checkoutCookieOptions(),
+      maxAge: 0,
+    });
+    return response;
   } catch (error) {
     return NextResponse.json(
       {

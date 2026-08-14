@@ -45,6 +45,12 @@ export function getContactEmail() {
   return process.env.CONTACT_TO_EMAIL?.trim() || "hello@plebs.co.za";
 }
 
+export function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+}
+
 export async function sendEmail(input: SendEmailInput) {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim();

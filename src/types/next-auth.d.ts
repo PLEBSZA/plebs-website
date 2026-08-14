@@ -4,6 +4,7 @@ import type { AdminRole } from "@/generated/prisma/client";
 declare module "next-auth" {
   interface User {
     role: AdminRole;
+    sessionVersion?: number;
   }
 
   interface Session {
@@ -17,5 +18,6 @@ declare module "next-auth" {
 declare module "@auth/core/jwt" {
   interface JWT {
     role?: AdminRole;
+    sessionVersion?: number;
   }
 }

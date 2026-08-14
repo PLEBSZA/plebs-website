@@ -3,10 +3,12 @@ import path from "node:path";
 import { render } from "react-email";
 import {
   AbandonedCheckoutEmail,
+  AccountSetupEmail,
   BackInStockEmail,
   ContactInquiryOwnerEmail,
   ContactReceivedEmail,
   EditorialAnnouncementEmail,
+  NewsletterConfirmEmail,
   NewsletterUpdateEmail,
   NewsletterWelcomeEmail,
   NewPaidOrderOwnerEmail,
@@ -18,6 +20,7 @@ import {
   ShippingConfirmationEmail,
   DeliveryConfirmationEmail,
   ReturnReceivedEmail,
+  PasswordResetEmail,
   emailBrand,
 } from "../src/lib/email/templates";
 
@@ -157,6 +160,24 @@ const previews = {
       customerName="Alex Example"
       requestType="Exchange"
       reason="I would like to exchange size S for size M."
+    />
+  ),
+  "account-setup": (
+    <AccountSetupEmail
+      firstName="Alex"
+      setupUrl="https://www.plebs.co.za/account/activate/?token=example"
+    />
+  ),
+  "password-reset": (
+    <PasswordResetEmail
+      firstName="Alex"
+      resetUrl="https://www.plebs.co.za/account/reset-password/?token=example"
+    />
+  ),
+  "newsletter-confirm": (
+    <NewsletterConfirmEmail
+      firstName="Alex"
+      confirmUrl="https://www.plebs.co.za/account/confirm-newsletter/?token=example"
     />
   ),
 };

@@ -35,4 +35,9 @@ export const adminNavItems = [
     label: "Restock demand",
     permission: "restock:read" as const,
   },
+  {
+    href: "/admin/customers",
+    label: "Customers",
+    permission: "customers:read" as const,
+  },
 ] as const;

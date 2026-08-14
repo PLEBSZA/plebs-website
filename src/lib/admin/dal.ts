@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isAdminRole } from "@/lib/account/roles";
 import {
   assertPermission,
   hasPermission,
@@ -20,6 +21,7 @@ export type AdminSessionUser = {
 export const getAdminSession = cache(async () => {
   const session = await auth();
   if (!session?.user?.id || !session.user.role) return null;
+  if (!isAdminRole(session.user.role)) return null;
   return {
     id: session.user.id,
     email: session.user.email ?? null,

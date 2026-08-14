@@ -74,12 +74,38 @@
   border-top: 1px solid var(--color-border);
 }
 
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .section h2 {
   margin: 0;
   font-size: var(--text-sm);
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.edit {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-forest-900);
+  font-size: var(--font-size-body-sm);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.status {
+  margin: 0;
+  color: var(--color-moss-700);
+  font-size: var(--font-size-body-sm);
+  font-weight: 700;
 }
 
 .section p {
@@ -123,6 +149,22 @@
 .actions {
   display: grid;
   gap: var(--space-3);
+  position: sticky;
+  bottom: 0;
+  padding-top: var(--space-3);
+  background: color-mix(in srgb, var(--color-sand-200) 92%, white);
+}
+
+.cancel {
+  border: 0;
+  padding: 0.4rem;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--font-size-body-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
 }
 
 .primary,

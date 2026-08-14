@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useId, useState } from "react";
 import { useStorefrontCatalogue } from "@/components/commerce/StorefrontCatalogueProvider";
+import { CONSENT_WORDING } from "@/lib/account/consent";
 import styles from "./RestockNotifyForm.module.css";
 
 type RestockNotifyFormProps = {
@@ -50,7 +51,7 @@ export function RestockNotifyForm({
           email,
           size,
           colour,
-          marketingConsent: true,
+          alertConsent: true,
         }),
       });
       const data = (await response.json()) as { message?: string };
@@ -147,14 +148,17 @@ export function RestockNotifyForm({
       <label className={styles.consent}>
         <input
           type="checkbox"
-          name="marketingConsent"
+          name="alertConsent"
           checked={consent}
           onChange={(event) => setConsent(event.target.checked)}
           required
         />
         <span>
-          I agree that PLEBS may email me when this size is back in stock. See
-          the <Link href="/privacy-policy/">privacy policy</Link>.
+          {CONSENT_WORDING.RESTOCK_ALERT_EMAIL.text.replace(
+            " See the privacy policy.",
+            "",
+          )}{" "}
+          See the <Link href="/privacy-policy/">privacy policy</Link>.
         </span>
       </label>
 

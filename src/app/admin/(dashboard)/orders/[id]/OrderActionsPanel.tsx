@@ -11,6 +11,7 @@ import {
   updateTrackingAction,
   sendTrackingEmailAction,
   sendDeliveryEmailAction,
+  resolveInventoryHoldAction,
   type FulfilmentActionState,
 } from "@/app/admin/actions/fulfilment";
 import {
@@ -24,6 +25,7 @@ type Props = {
   status: string;
   paymentStatus: string;
   fulfilmentStatus: string;
+  inventoryHold?: boolean;
   completeBlocker: string | null;
   emailConfigured?: boolean;
   tracking?: {
@@ -46,11 +48,16 @@ export function OrderActionsPanel({
   status,
   paymentStatus,
   fulfilmentStatus,
+  inventoryHold = false,
   completeBlocker,
   emailConfigured = true,
   tracking,
   items,
 }: Props) {
+  const [holdState, holdAction, resolvingHold] = useActionState(
+    resolveInventoryHoldAction,
+    initialFulfilment,
+  );
   const [packState, packAction, packing] = useActionState(
     packOrderAction,
     initialFulfilment,
@@ -118,7 +125,45 @@ export function OrderActionsPanel({
     >
       <h2>Actions</h2>
 
-      {!isCancelled && isPaid && !isPacked && !isFulfilled && !isDelivered && (
+      {inventoryHold && !isCancelled && (
+        <div
+          role="alert"
+          style={{
+            marginBottom: "var(--space-3)",
+            padding: "var(--space-3)",
+            border: "1px solid #a15c00",
+            borderRadius: "var(--radius-sm)",
+            background: "rgba(161, 92, 0, 0.08)",
+          }}
+        >
+          <p style={{ margin: "0 0 0.5rem", fontWeight: 700, color: "#7a4300" }}>
+            Inventory hold — do not pack
+          </p>
+          <p style={{ margin: "0 0 0.75rem" }}>
+            This order was paid after its reservation expired and stock could
+            not be re-reserved. Restock the size, then retry reservation before
+            packing.
+          </p>
+          <form action={holdAction}>
+            <input type="hidden" name="orderId" value={orderId} />
+            <button type="submit" disabled={resolvingHold}>
+              {resolvingHold ? "Retrying…" : "Retry stock reservation"}
+            </button>
+          </form>
+          {holdState.error && (
+            <p style={{ color: "crimson", margin: "0.5rem 0 0" }}>
+              {holdState.error}
+            </p>
+          )}
+          {holdState.ok && (
+            <p style={{ color: "green", margin: "0.5rem 0 0" }}>
+              {holdState.message ?? "Hold cleared."}
+            </p>
+          )}
+        </div>
+      )}
+
+      {!isCancelled && isPaid && !inventoryHold && !isPacked && !isFulfilled && !isDelivered && (
         <div style={{ marginBottom: "var(--space-3)" }}>
           <form action={packAction} style={{ display: "inline" }}>
             <input type="hidden" name="orderId" value={orderId} />
@@ -137,7 +182,7 @@ export function OrderActionsPanel({
         </div>
       )}
 
-      {!isCancelled && isPaid && !hasDispatched && (
+      {!isCancelled && isPaid && !inventoryHold && !hasDispatched && (
         <div style={{ marginBottom: "var(--space-3)" }}>
           <form action={fulfilAction}>
             <input type="hidden" name="orderId" value={orderId} />

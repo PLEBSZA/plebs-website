@@ -7,6 +7,7 @@ import {
 
 export type OrderNextAction =
   | "Awaiting payment"
+  | "Inventory hold"
   | "Ready to pack"
   | "Ready to dispatch"
   | "In transit"
@@ -37,6 +38,7 @@ export function getOrderNextAction(order: {
   status: OrderStatus | string;
   paymentStatus: PaymentStatus | string;
   fulfilmentStatus: FulfilmentStatus | string;
+  inventoryHold?: boolean;
   returnRequests?: { status: ReturnStatus }[];
 }): OrderNextAction {
   if (order.status === OrderStatus.CANCELLED || order.status === "CANCELLED") {
@@ -50,6 +52,9 @@ export function getOrderNextAction(order: {
     order.paymentStatus === "PENDING"
   ) {
     return "Awaiting payment";
+  }
+  if (order.inventoryHold) {
+    return "Inventory hold";
   }
   if (
     order.fulfilmentStatus === FulfilmentStatus.UNFULFILLED ||
@@ -87,6 +92,7 @@ export function getOrderNextAction(order: {
 export function getOpenOrderSortPriority(order: {
   paymentStatus: PaymentStatus | string;
   fulfilmentStatus: FulfilmentStatus | string;
+  inventoryHold?: boolean;
   returnRequests?: { status: ReturnStatus }[];
 }): number {
   const action = getOrderNextAction({
@@ -94,18 +100,20 @@ export function getOpenOrderSortPriority(order: {
     ...order,
   });
   switch (action) {
-    case "Process return":
+    case "Inventory hold":
       return 0;
-    case "Confirm delivery":
+    case "Process return":
       return 1;
-    case "Ready to dispatch":
+    case "Confirm delivery":
       return 2;
-    case "Ready to pack":
+    case "Ready to dispatch":
       return 3;
-    case "Complete order":
+    case "Ready to pack":
       return 4;
-    case "Awaiting payment":
+    case "Complete order":
       return 5;
+    case "Awaiting payment":
+      return 6;
     default:
       return 9;
   }

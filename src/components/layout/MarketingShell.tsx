@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { AccountNav, AccountNavFallback } from "@/components/layout/AccountNav";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -36,7 +38,13 @@ export async function MarketingShell({
         </a>
         <div className="site-shell">
           <AnnouncementBar />
-          <SiteHeader />
+          <SiteHeader
+            accountNav={
+              <Suspense fallback={<AccountNavFallback />}>
+                <AccountNav />
+              </Suspense>
+            }
+          />
           <main id="main-content" className="site-main">
             {children}
           </main>

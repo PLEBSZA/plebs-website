@@ -16,7 +16,12 @@ const globalForPrisma = globalThis as unknown as {
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    adapter: new PrismaPg({ connectionString: databaseUrl }),
+    // PrismaPg caches prepared statements only when `statementNameGenerator` is
+    // set. Leave it unset so pooled Neon (PgBouncer) connections stay valid.
+    adapter: new PrismaPg({
+      connectionString: databaseUrl,
+      connectionTimeoutMillis: 8_000,
+    }),
   });
 
 if (process.env.NODE_ENV !== "production") {

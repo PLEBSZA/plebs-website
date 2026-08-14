@@ -40,46 +40,55 @@ export async function getStorefrontCatalogue(
   cacheLife("minutes");
   cacheTag(STOREFRONT_CATALOGUE_TAG);
 
-  const product = await db.product.findFirst({
-    where: {
-      slug,
-      status: ProductStatus.ACTIVE,
-      publicationStatus: {
-        in: [
-          PublicationStatus.STOREFRONT,
-          PublicationStatus.STOREFRONT_AND_FEED,
-        ],
+  let product;
+  try {
+    product = await db.product.findFirst({
+      where: {
+        slug,
+        status: ProductStatus.ACTIVE,
+        publicationStatus: {
+          in: [
+            PublicationStatus.STOREFRONT,
+            PublicationStatus.STOREFRONT_AND_FEED,
+          ],
+        },
       },
-    },
-    include: {
-      options: {
-        include: {
-          values: {
-            where: { isActive: true },
-            orderBy: { displayOrder: "asc" },
+      include: {
+        options: {
+          include: {
+            values: {
+              where: { isActive: true },
+              orderBy: { displayOrder: "asc" },
+            },
           },
+          orderBy: { displayOrder: "asc" },
         },
-        orderBy: { displayOrder: "asc" },
-      },
-      variants: {
-        where: {
-          status: { in: [VariantStatus.ACTIVE, VariantStatus.INACTIVE] },
-        },
-        include: {
-          colourValue: true,
-          sizeValue: true,
-          inventoryItem: {
-            include: {
-              levels: {
-                orderBy: { location: { fulfilmentPriority: "desc" } },
-                take: 1,
+        variants: {
+          where: {
+            status: { in: [VariantStatus.ACTIVE, VariantStatus.INACTIVE] },
+          },
+          include: {
+            colourValue: true,
+            sizeValue: true,
+            inventoryItem: {
+              include: {
+                levels: {
+                  orderBy: { location: { fulfilmentPriority: "desc" } },
+                  take: 1,
+                },
               },
             },
           },
         },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error(
+      "[storefront-catalogue] Database read failed; using static catalogue.",
+      error,
+    );
+    return catalogueFromStatic();
+  }
 
   if (!product) {
     return catalogueFromStatic();

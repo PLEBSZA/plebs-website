@@ -308,7 +308,12 @@ export default async function AdminOrdersPage({
                         : "—"}
                     </td>
                     <td>{formatMoney(Number(order.total), "ZAR")}</td>
-                    <td>{next === "None" ? "—" : next}</td>
+                    <td>
+                      {next === "None" ? "—" : next}
+                      {order.inventoryHold ? (
+                        <span className={styles.badge}>Hold</span>
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })}

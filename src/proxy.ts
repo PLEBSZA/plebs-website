@@ -1,8 +1,11 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import authConfig from "@/auth.config";
 import { shouldIndexSite } from "@/lib/env";
+import {
+  isPublicAccountPath,
+  normalizePathname,
+} from "@/lib/auth/authorize";
 
 /**
  * Auth.js keeps the session alive on matched requests.
@@ -11,13 +14,25 @@ import { shouldIndexSite } from "@/lib/env";
  */
 const { auth } = NextAuth(authConfig);
 
-export const proxy = auth(function proxy(request: NextRequest) {
+export const proxy = auth(function proxy(request) {
   const { pathname } = request.nextUrl;
 
   if (pathname !== pathname.toLowerCase()) {
     const url = request.nextUrl.clone();
     url.pathname = pathname.toLowerCase();
     return NextResponse.redirect(url, 308);
+  }
+
+  const session = request.auth;
+  const path = normalizePathname(pathname);
+
+  if (path.startsWith("/account") && !isPublicAccountPath(pathname)) {
+    if (!session?.user?.id) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/account/login/";
+      url.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(url);
+    }
   }
 
   const requestHeaders = new Headers(request.headers);
@@ -29,7 +44,11 @@ export const proxy = auth(function proxy(request: NextRequest) {
     },
   });
 
-  if (!shouldIndexSite() || pathname.startsWith("/admin")) {
+  if (
+    !shouldIndexSite() ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/account")
+  ) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
 

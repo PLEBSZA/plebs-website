@@ -1,53 +1,88 @@
 import { NextResponse } from "next/server";
+import {
+  CHECKOUT_COOKIE_NAME,
+  checkoutCookieOptions,
+  serializeCheckoutCookieValue,
+} from "@/lib/checkout/cookie";
+import { checkoutInputFromRequestBody } from "@/lib/checkout/schema";
+import {
+  initializePaystackPayment,
+  isPaystackConfigured,
+} from "@/lib/commerce/paystack";
 import { createOrder } from "@/lib/orders";
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const started = Date.now();
+  const body = (await request.json()) as Record<string, unknown>;
+  const input = checkoutInputFromRequestBody(body);
 
-  const result = await createOrder({
-    customer: {
-      email: body.email ?? "",
-      firstName: body.firstName ?? "",
-      lastName: body.lastName ?? "",
-      phone: body.phone ?? "",
-    },
-    shippingAddress: {
-      line1: body.shippingLine1 ?? "",
-      line2: body.shippingLine2,
-      suburb: body.shippingSuburb ?? "",
-      city: body.shippingCity ?? "",
-      province: body.shippingProvince ?? "",
-      postalCode: body.shippingPostalCode ?? "",
-      country: body.shippingCountry ?? "South Africa",
-    },
-    billingSameAsShipping: body.billingSameAsShipping !== false,
-    billingAddress: body.billingSameAsShipping
-      ? undefined
-      : {
-          line1: body.billingLine1 ?? "",
-          line2: body.billingLine2,
-          suburb: body.billingSuburb ?? "",
-          city: body.billingCity ?? "",
-          province: body.billingProvince ?? "",
-          postalCode: body.billingPostalCode ?? "",
-          country: body.billingCountry ?? "South Africa",
-        },
-    shippingMethodId: body.shippingMethodId ?? "standard",
-    colour: body.colour ?? "Forest Green",
-    size: body.size ?? "",
-    quantity: Number(body.quantity ?? 1),
-  });
+  const result = await createOrder(
+    input as Parameters<typeof createOrder>[0],
+  );
+  const orderReadyMs = Date.now() - started;
 
   if (!result.ok) {
-    return NextResponse.json(
-      { message: result.message, code: result.code },
-      { status: result.code === "out_of_stock" ? 409 : 400 },
+    const status =
+      result.code === "out_of_stock" || result.code === "conflict" ? 409 : 400;
+    const response = NextResponse.json(
+      {
+        message: result.message,
+        code: result.code,
+        fields: "fields" in result ? result.fields : undefined,
+      },
+      { status },
     );
+    response.headers.set(
+      "Server-Timing",
+      `checkout_order_ready;dur=${orderReadyMs}`,
+    );
+    return response;
   }
 
-  return NextResponse.json({
+  let paymentReady = false;
+  let authorizationUrl: string | null = null;
+  let paymentMessage: string | null = null;
+
+  if (isPaystackConfigured()) {
+    try {
+      const payment = await initializePaystackPayment(
+        result.order.id,
+        new URL(request.url).origin,
+      );
+      if (payment.ok) {
+        paymentReady = true;
+        authorizationUrl = payment.authorizationUrl;
+      } else {
+        paymentMessage = payment.message;
+      }
+    } catch {
+      paymentMessage =
+        "Paystack could not be reached. You can retry payment from review.";
+    }
+  } else {
+    paymentMessage =
+      "Payment gateway is not configured yet. Your order has been reserved.";
+  }
+
+  const paymentReadyMs = Date.now() - started;
+  const response = NextResponse.json({
     orderId: result.order.id,
     orderNumber: result.order.number,
     checkoutToken: result.checkoutToken,
+    reused: result.reused,
+    order: result.order,
+    paymentReady,
+    authorizationUrl,
+    paymentMessage,
   });
+  response.cookies.set(
+    CHECKOUT_COOKIE_NAME,
+    serializeCheckoutCookieValue(result.order.number, result.checkoutToken),
+    checkoutCookieOptions(),
+  );
+  response.headers.set(
+    "Server-Timing",
+    `checkout_order_ready;dur=${orderReadyMs}, checkout_payment_ready;dur=${paymentReadyMs}`,
+  );
+  return response;
 }

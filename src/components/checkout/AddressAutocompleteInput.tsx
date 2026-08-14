@@ -11,13 +11,21 @@ type AddressAutocompleteInputProps = {
   name: string;
   autoComplete?: string;
   required?: boolean;
+  defaultValue?: string;
   /** Form field name prefix, e.g. "shipping" → shippingSuburb, shippingCity */
   fieldPrefix: "shipping" | "billing";
 };
 
 function setInputValue(form: HTMLFormElement, name: string, value: string) {
   const element = form.elements.namedItem(name);
-  if (!(element instanceof HTMLInputElement)) return;
+  if (
+    !(
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLSelectElement
+    )
+  ) {
+    return;
+  }
   element.value = value;
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
@@ -46,6 +54,7 @@ export function AddressAutocompleteInput({
   name,
   autoComplete = "street-address",
   required,
+  defaultValue,
   fieldPrefix,
 }: AddressAutocompleteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -115,6 +124,7 @@ export function AddressAutocompleteInput({
       name={name}
       autoComplete={autoComplete}
       required={required}
+      defaultValue={defaultValue}
       placeholder="Start typing your street address"
     />
   );

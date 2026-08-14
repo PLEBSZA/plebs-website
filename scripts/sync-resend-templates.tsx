@@ -11,11 +11,14 @@ import {
   ContactReceivedEmail,
   DeliveryConfirmationEmail,
   EditorialAnnouncementEmail,
+  NewsletterConfirmEmail,
   NewsletterUpdateEmail,
   NewsletterWelcomeEmail,
   NewPaidOrderOwnerEmail,
   OrderCancelledEmail,
   OrderConfirmedEmail,
+  AccountSetupEmail,
+  PasswordResetEmail,
   RefundConfirmationEmail,
   RestockRequestedEmail,
   ReturnReceivedEmail,
@@ -367,6 +370,54 @@ const definitions = [
         customerName={placeholder("CUSTOMER_NAME")}
         requestType={placeholder("REQUEST_TYPE")}
         reason={placeholder("REASON")}
+      />
+    ),
+  },
+  {
+    alias: emailTemplateAliases.accountSetup,
+    name: "PLEBS · Account setup",
+    subject: "Set up your PLEBS account",
+    from: transactionalFrom,
+    variables: [
+      variable("CUSTOMER_FIRST_NAME", "there"),
+      variable("SETUP_URL"),
+    ],
+    component: (
+      <AccountSetupEmail
+        firstName={placeholder("CUSTOMER_FIRST_NAME")}
+        setupUrl={placeholder("SETUP_URL")}
+      />
+    ),
+  },
+  {
+    alias: emailTemplateAliases.passwordReset,
+    name: "PLEBS · Password reset",
+    subject: "Reset your PLEBS password",
+    from: transactionalFrom,
+    variables: [
+      variable("CUSTOMER_FIRST_NAME", "there"),
+      variable("RESET_URL"),
+    ],
+    component: (
+      <PasswordResetEmail
+        firstName={placeholder("CUSTOMER_FIRST_NAME")}
+        resetUrl={placeholder("RESET_URL")}
+      />
+    ),
+  },
+  {
+    alias: emailTemplateAliases.newsletterConfirm,
+    name: "PLEBS · Newsletter confirmation",
+    subject: "Confirm your PLEBS newsletter subscription",
+    from: transactionalFrom,
+    variables: [
+      variable("CUSTOMER_FIRST_NAME", "there"),
+      variable("CONFIRM_URL"),
+    ],
+    component: (
+      <NewsletterConfirmEmail
+        firstName={placeholder("CUSTOMER_FIRST_NAME")}
+        confirmUrl={placeholder("CONFIRM_URL")}
       />
     ),
   },

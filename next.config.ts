@@ -53,6 +53,16 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: true,
       },
+      {
+        source: "/account/sign-in",
+        destination: "/account/login/",
+        permanent: false,
+      },
+      {
+        source: "/account/sign-in/",
+        destination: "/account/login/",
+        permanent: false,
+      },
     ];
   },
   async headers() {
@@ -68,6 +78,10 @@ const nextConfig: NextConfig = {
           },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
         ],
+      },
+      {
+        source: "/account/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
       {
         source: "/feeds/google-merchant.tsv",

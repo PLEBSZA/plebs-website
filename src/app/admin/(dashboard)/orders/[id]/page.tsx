@@ -76,6 +76,7 @@ export default async function AdminOrderDetailPage({
           Fulfilment{" "}
           {order.fulfilmentStatus.replaceAll("_", " ").toLowerCase()} ·
           Lifecycle {order.status.toLowerCase()}
+          {order.inventoryHold ? " · Inventory hold" : ""}
         </p>
         <p style={{ marginTop: "0.25rem" }}>
           <Link href="/admin/orders">← All orders</Link>
@@ -274,6 +275,7 @@ export default async function AdminOrderDetailPage({
         status={order.status}
         paymentStatus={order.paymentStatus}
         fulfilmentStatus={order.fulfilmentStatus}
+        inventoryHold={order.inventoryHold}
         completeBlocker={completeBlocker}
         emailConfigured={emailStatus.configured}
         tracking={

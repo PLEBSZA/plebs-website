@@ -84,7 +84,17 @@
   font-size: var(--text-sm);
   font-weight: 650;
   cursor: pointer;
+}
+
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
   justify-self: end;
+}
+
+.headerAccount {
+  display: inline-flex;
 }
 
 .cartCount {

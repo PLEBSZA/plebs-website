@@ -4,6 +4,8 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { signIn, signOut } from "@/auth";
+import { normalizeEmail } from "@/lib/account/email";
+import { isAdminRole } from "@/lib/account/roles";
 import { recordAuditEvent } from "@/lib/admin/audit";
 import { db } from "@/lib/db";
 
@@ -35,9 +37,11 @@ export async function loginAction(
     };
   }
 
+  const email = normalizeEmail(parsed.data.email);
+
   try {
     await signIn("credentials", {
-      email: parsed.data.email.trim().toLowerCase(),
+      email,
       password: parsed.data.password,
       redirect: false,
     });
@@ -49,18 +53,21 @@ export async function loginAction(
   }
 
   const user = await db.user.findUnique({
-    where: { email: parsed.data.email.trim().toLowerCase() },
-    select: { id: true },
+    where: { email },
+    select: { id: true, role: true },
   });
 
-  if (user) {
-    await recordAuditEvent({
-      actorId: user.id,
-      action: "auth.login",
-      entityType: "user",
-      entityId: user.id,
-    });
+  if (!user || !isAdminRole(user.role)) {
+    await signOut({ redirect: false });
+    return { error: "Invalid email or password." };
   }
+
+  await recordAuditEvent({
+    actorId: user.id,
+    action: "auth.login",
+    entityType: "user",
+    entityId: user.id,
+  });
 
   redirect("/admin");
 }

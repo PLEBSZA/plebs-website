@@ -9,11 +9,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: indexable ? "/" : undefined,
-      // Only real non-indexable app routes. Cart is a client drawer (no /cart/
-      // page) and there is no /account/ route yet — add those back here if/when
-      // dedicated pages are introduced.
       disallow: indexable
-        ? ["/checkout/", "/admin/", "/order-confirmation/"]
+        ? ["/checkout/", "/admin/", "/account/", "/order-confirmation/"]
         : "/",
     },
     sitemap: indexable ? `${siteUrl}/sitemap.xml` : undefined,

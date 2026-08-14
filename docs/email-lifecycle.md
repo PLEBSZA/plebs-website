@@ -1,7 +1,7 @@
 # PLEBS email lifecycle
 
 The application keeps branded React Email source under
-`src/lib/email/templates/`. Sixteen matching templates are published in
+`src/lib/email/templates/`. Nineteen matching templates are published in
 Resend and use stable aliases from `src/lib/email/template-aliases.ts`. Website
 triggers send those aliases through the shared Resend adapter, so the delivered
 message is the published template visible in the Resend dashboard.
@@ -28,7 +28,12 @@ message is the published template visible in the Resend dashboard.
 - Paid order: sends one combined PLEBS payment and order confirmation to the
   customer through `plebs-order-confirmed`, plus
   `plebs-order-owner` internally. Paystack may separately send its own payment
-  receipt.
+  receipt. A paid order also enqueues a customer account setup email when the
+  account has no password.
+- Account setup: `plebs-account-setup` (after owner sync).
+- Password reset: `plebs-password-reset`.
+- Newsletter double opt-in: `plebs-newsletter-confirm`, then
+  `plebs-newsletter-welcome` only after confirmation.
 - Restock request: `plebs-restock-requested` confirms the exact colour and size.
 - Dispatch tracking: `plebs-shipping-confirmation` is **operator-triggered** from
   the order detail page after fulfilment (Save tracking and Send tracking email
@@ -76,7 +81,8 @@ attached to an unsafe or incomplete trigger.
 - The Resend topic `PLEBS news & updates` exists with a default `opt_out`
   subscription. A signup must explicitly opt the contact into this topic.
 - Newsletter signup needs a server endpoint that records the consent timestamp,
-  source and exact wording before adding the address to Resend.
+  source and exact wording before adding the address to Resend. This is now
+  implemented with double opt-in: see `docs/customer-accounts.md`.
 - The marketing footer needs the business postal address before the first
   campaign is sent.
 - Every Broadcast must target the newsletter segment and topic and must retain
@@ -90,7 +96,8 @@ attached to an unsafe or incomplete trigger.
 
 ## Operational work still needed
 
-- Add the newsletter consent record and connect the footer form.
+- Publish the new account setup, password reset and newsletter confirmation
+  templates with the owner-controlled `npm run email:sync` step.
 - Add an admin action that sends a back-in-stock batch and updates
   `RestockRequest.notifiedAt`, `notificationBatch` and status.
 - Add a scheduler only after cart-reminder consent exists.

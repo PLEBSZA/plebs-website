@@ -11,6 +11,7 @@ import {
   completeOrder,
   reopenOrder,
   updateFulfilmentTracking,
+  resolveInventoryHold,
 } from "@/lib/commerce/fulfilment-service";
 import { sendFulfilmentDispatchedEmail, sendDeliveryConfirmationEmail } from "@/lib/email/fulfilment-emails";
 
@@ -40,6 +41,31 @@ export async function packOrderAction(
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   return { ok: true };
+}
+
+export async function resolveInventoryHoldAction(
+  _prev: FulfilmentActionState,
+  formData: FormData,
+): Promise<FulfilmentActionState> {
+  const user = await requireAdminSession("orders:fulfil");
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) return { error: "Missing order." };
+
+  try {
+    await resolveInventoryHold({ orderId, userId: user.id });
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to resolve inventory hold.",
+    };
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/inventory");
+  return { ok: true, message: "Inventory hold cleared. The order can be packed." };
 }
 
 const fulfilSchema = z.object({

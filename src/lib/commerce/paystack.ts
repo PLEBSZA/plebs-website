@@ -1,6 +1,7 @@
 import "server-only";
 
 import { PaymentStatus } from "@/generated/prisma/client";
+import { shouldReusePaystackInitialization } from "@/lib/checkout/policy";
 import { getCanonicalSiteUrl } from "@/lib/env";
 import { markOrderPaid } from "@/lib/commerce/fulfilment-service";
 import { db } from "@/lib/db";
@@ -56,6 +57,55 @@ async function paystackRequest<T>(
   return payload.data;
 }
 
+type PaystackPaymentMetadata = {
+  authorization_url?: string;
+  access_code?: string;
+  initialized_email?: string;
+  checkoutToken?: string;
+};
+
+function readPaystackMetadata(metadata: unknown): PaystackPaymentMetadata {
+  if (!metadata || typeof metadata !== "object") return {};
+  return metadata as PaystackPaymentMetadata;
+}
+
+export function getReusablePaystackRedirect(order: {
+  paymentStatus: PaymentStatus;
+  customerEmail: string;
+  total: { toString(): string } | number;
+  payments: Array<{
+    status: PaymentStatus;
+    amount: { toString(): string } | number;
+    providerReference: string | null;
+    metadata: unknown;
+  }>;
+}) {
+  const pendingPayment =
+    order.payments.find((payment) => payment.status === PaymentStatus.PENDING) ??
+    order.payments[0];
+  if (!pendingPayment) return null;
+
+  const metadata = readPaystackMetadata(pendingPayment.metadata);
+  if (
+    !shouldReusePaystackInitialization({
+      paymentStatus: pendingPayment.status,
+      amount: Number(pendingPayment.amount),
+      orderTotal: Number(order.total),
+      authorizationUrl: metadata.authorization_url,
+      providerReference: pendingPayment.providerReference,
+      initializedEmail: metadata.initialized_email,
+      customerEmail: order.customerEmail,
+    })
+  ) {
+    return null;
+  }
+
+  return {
+    authorizationUrl: metadata.authorization_url as string,
+    reference: pendingPayment.providerReference as string,
+  };
+}
+
 export async function initializePaystackPayment(
   orderId: string,
   requestOrigin?: string,
@@ -90,6 +140,17 @@ export async function initializePaystackPayment(
     };
   }
 
+  const reused = getReusablePaystackRedirect(order);
+  if (reused) {
+    return {
+      ok: true as const,
+      authorizationUrl: reused.authorizationUrl,
+      reference: reused.reference,
+      orderNumber: order.number,
+      reused: true,
+    };
+  }
+
   const amountSubunit = Math.round(Number(order.total) * 100);
   const callbackBaseUrl =
     process.env.NODE_ENV === "development" && requestOrigin
@@ -99,6 +160,14 @@ export async function initializePaystackPayment(
     "/api/payments/paystack/callback/",
     callbackBaseUrl,
   ).toString();
+
+  const pendingPayment =
+    order.payments.find((payment) => payment.status === PaymentStatus.PENDING) ??
+    order.payments[0];
+  const existingMetadata =
+    pendingPayment?.metadata && typeof pendingPayment.metadata === "object"
+      ? (pendingPayment.metadata as Record<string, unknown>)
+      : {};
 
   const data = await paystackRequest<{
     authorization_url: string;
@@ -115,6 +184,10 @@ export async function initializePaystackPayment(
       metadata: {
         order_id: order.id,
         order_number: order.number,
+        checkoutToken:
+          typeof existingMetadata.checkoutToken === "string"
+            ? existingMetadata.checkoutToken
+            : undefined,
         custom_fields: [
           {
             display_name: "Order",
@@ -125,15 +198,6 @@ export async function initializePaystackPayment(
       },
     }),
   });
-
-  const pendingPayment =
-    order.payments.find((payment) => payment.status === PaymentStatus.PENDING) ??
-    order.payments[0];
-
-  const existingMetadata =
-    pendingPayment?.metadata && typeof pendingPayment.metadata === "object"
-      ? (pendingPayment.metadata as Record<string, unknown>)
-      : {};
 
   if (pendingPayment) {
     await db.payment.update({
@@ -146,6 +210,7 @@ export async function initializePaystackPayment(
           ...existingMetadata,
           access_code: data.access_code,
           authorization_url: data.authorization_url,
+          initialized_email: order.customerEmail,
         },
       },
     });
@@ -161,6 +226,7 @@ export async function initializePaystackPayment(
         metadata: {
           access_code: data.access_code,
           authorization_url: data.authorization_url,
+          initialized_email: order.customerEmail,
         },
       },
     });
@@ -171,6 +237,7 @@ export async function initializePaystackPayment(
     authorizationUrl: data.authorization_url,
     reference: data.reference,
     orderNumber: order.number,
+    reused: false,
   };
 }
 
@@ -248,13 +315,17 @@ export async function verifyPaystackPayment(reference: string) {
 
   const paidOrder = await db.order.findUniqueOrThrow({
     where: { id: order.id },
-    select: { id: true, number: true },
+    include: { payments: true },
   });
+  const checkoutToken = paidOrder.payments
+    .map((entry) => readPaystackMetadata(entry.metadata).checkoutToken)
+    .find((value): value is string => Boolean(value));
 
   return {
     ok: true as const,
     orderId: paidOrder.id,
     orderNumber: paidOrder.number,
+    checkoutToken: checkoutToken ?? null,
   };
 }
 

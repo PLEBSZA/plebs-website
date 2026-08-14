@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { authorizeAdminPath } from "@/lib/auth/authorize";
 
 /**
  * Edge-compatible Auth.js config (safe for Next.js proxy).
@@ -15,20 +16,7 @@ export default {
   },
   callbacks: {
     authorized({ auth, request }) {
-      const { pathname } = request.nextUrl;
-
-      if (!pathname.startsWith("/admin")) {
-        return true;
-      }
-
-      if (
-        pathname === "/admin/login" ||
-        pathname.startsWith("/admin/login/")
-      ) {
-        return true;
-      }
-
-      return Boolean(auth?.user);
+      return authorizeAdminPath(request.nextUrl.pathname, auth?.user?.role);
     },
   },
   trustHost: true,

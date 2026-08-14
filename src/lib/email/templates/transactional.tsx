@@ -313,6 +313,83 @@ export function OrderCancelledEmail({
   );
 }
 
+export function AccountSetupEmail({
+  firstName,
+  setupUrl,
+}: {
+  firstName: string;
+  setupUrl: string;
+}) {
+  return (
+    <BrandedEmail
+      preview="Set a password for your PLEBS account."
+      eyebrow="Your PLEBS account"
+      title={`${firstName}, set up your account.`}
+    >
+      <EmailText>
+        We created a free PLEBS account so you can view orders, tracking and
+        email preferences. This message is not a marketing subscription.
+      </EmailText>
+      <EmailButton href={setupUrl}>Choose a password</EmailButton>
+      <SmallPrint>
+        This link expires in 24 hours. If you did not expect this email, you can
+        ignore it.
+      </SmallPrint>
+    </BrandedEmail>
+  );
+}
+
+export function PasswordResetEmail({
+  firstName,
+  resetUrl,
+}: {
+  firstName: string;
+  resetUrl: string;
+}) {
+  return (
+    <BrandedEmail
+      preview="Reset your PLEBS password."
+      eyebrow="Password reset"
+      title={`${firstName}, choose a new password.`}
+    >
+      <EmailText>
+        We received a request to reset the password for your PLEBS account.
+      </EmailText>
+      <EmailButton href={resetUrl}>Reset password</EmailButton>
+      <SmallPrint>
+        This link expires in 60 minutes. If you did not request a reset, you can
+        ignore this email.
+      </SmallPrint>
+    </BrandedEmail>
+  );
+}
+
+export function NewsletterConfirmEmail({
+  firstName,
+  confirmUrl,
+}: {
+  firstName: string;
+  confirmUrl: string;
+}) {
+  return (
+    <BrandedEmail
+      preview="Confirm your PLEBS newsletter subscription."
+      eyebrow="Confirm subscription"
+      title={`${firstName}, confirm you want PLEBS news.`}
+    >
+      <EmailText>
+        Click below to confirm you want emails about restocks, product updates
+        and occasional stories. We will not send those emails until you confirm.
+      </EmailText>
+      <EmailButton href={confirmUrl}>Confirm subscription</EmailButton>
+      <SmallPrint>
+        If you did not request this, ignore the email and you will stay opted
+        out.
+      </SmallPrint>
+    </BrandedEmail>
+  );
+}
+
 const styles = {
   itemTitle: {
     margin: "0 0 10px",

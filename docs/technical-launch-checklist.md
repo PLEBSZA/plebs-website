@@ -9,7 +9,7 @@ Use this before Search Console and merchant setup. Mark each item only when veri
 - [ ] HTTPS redirects correctly
 - [ ] Canonical tags are self-referencing on all indexable pages
 - [ ] `/sitemap.xml` loads and lists only canonical indexable URLs
-- [ ] `/robots.txt` allows public pages and disallows cart/checkout/account/admin/order-confirmation
+- [ ] `/robots.txt` allows public pages and disallows checkout/account/admin/order-confirmation
 - [ ] Preview and staging deployments send `noindex`
 - [ ] No accidental global `noindex` remains on production
 - [ ] Variant query states canonicalise to `/products/cotton-corduroy-dungarees/`
@@ -65,3 +65,14 @@ Use this before Search Console and merchant setup. Mark each item only when veri
 - [ ] Merchant feed uses factual titles and no invented GTIN
 - [ ] Merchant TSV is submitted from `https://www.plebs.co.za/feeds/google-merchant.tsv`
 - [ ] Merchant Center account-level delivery charges match the actual checkout charge
+
+## Checkout and payments
+
+- [ ] All four Prisma migrations are applied in order on a Neon branch, then production (`add_customer_role`, `customer_accounts_consent`, `checkout_key`, `order_inventory_hold`)
+- [ ] `CRON_SECRET` is set on Vercel; Hobby cron runs once daily (`0 4 * * *`)
+- [ ] Cart Checkout CTA is visible without scrolling at 1366×600, 1280×720, 390×844 and 360×800
+- [ ] Review appears immediately after local validation; Pay stays disabled until reservation + Paystack init
+- [ ] Paystack live keys are configured only when taking real payments; test mode copy remains visible on test keys
+- [ ] Delivery copy still says timing is to be confirmed until a courier promise exists
+- [ ] Cart survives refresh until a verified paid confirmation
+

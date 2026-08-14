@@ -1,8 +1,16 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { PurchaseBeacon } from "@/components/analytics/PurchaseBeacon";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
+import {
+  CHECKOUT_COOKIE_NAME,
+  CONFIRMATION_COOKIE_NAME,
+  parseCheckoutCookieValue,
+} from "@/lib/checkout/cookie";
+import { resolveCheckoutConfirmationLookup } from "@/lib/checkout/policy";
 import { createPageMetadata } from "@/lib/metadata";
+import { getCheckoutOrder } from "@/lib/orders";
 import { productData } from "@/lib/product";
 
 export const metadata = createPageMetadata({
@@ -12,6 +20,51 @@ export const metadata = createPageMetadata({
   noIndex: true,
 });
 
+async function resolveConfirmedOrder(input: {
+  orderNumber: string | null;
+  paymentFailed: boolean;
+}) {
+  const cookieStore = await cookies();
+  const fromCheckout = parseCheckoutCookieValue(
+    cookieStore.get(CHECKOUT_COOKIE_NAME)?.value,
+  );
+  const fromConfirmation = parseCheckoutCookieValue(
+    cookieStore.get(CONFIRMATION_COOKIE_NAME)?.value,
+  );
+  const lookup = resolveCheckoutConfirmationLookup({
+    checkoutOrderNumber: fromCheckout?.orderNumber,
+    checkoutToken: fromCheckout?.checkoutToken,
+    confirmationOrderNumber: fromConfirmation?.orderNumber,
+    confirmationToken: fromConfirmation?.checkoutToken,
+    queryOrderNumber: input.orderNumber,
+  });
+  if (!lookup) {
+    return {
+      orderNumber: input.orderNumber,
+      paid: false,
+      paymentFailed: input.paymentFailed,
+    };
+  }
+
+  const order = await getCheckoutOrder({
+    orderNumber: lookup.orderNumber,
+    checkoutToken: lookup.checkoutToken,
+  });
+  if (!order) {
+    return {
+      orderNumber: input.orderNumber,
+      paid: false,
+      paymentFailed: input.paymentFailed,
+    };
+  }
+
+  return {
+    orderNumber: order.number,
+    paid: order.status === "paid",
+    paymentFailed: input.paymentFailed && order.status !== "paid",
+  };
+}
+
 async function OrderConfirmationContent({
   searchParams,
 }: {
@@ -19,30 +72,38 @@ async function OrderConfirmationContent({
 }) {
   const params = await searchParams;
   const orderNumber = typeof params.order === "string" ? params.order : null;
-  const paid = params.paid === "true";
   const paymentFailed = params.error === "payment_failed";
+  const confirmed = await resolveConfirmedOrder({
+    orderNumber,
+    paymentFailed,
+  });
 
   return (
     <section className="section">
-      <PurchaseBeacon orderNumber={orderNumber} paid={paid} />
+      <PurchaseBeacon
+        orderNumber={confirmed.orderNumber}
+        paid={confirmed.paid}
+      />
       <div className="container container--reading">
         <p className="editorial-page__kicker">
-          {paymentFailed ? "Payment unsuccessful" : "Order confirmed"}
+          {confirmed.paymentFailed ? "Payment unsuccessful" : "Order confirmed"}
         </p>
-        <h1>{paymentFailed ? "Payment Was Not Completed." : "Thank You."}</h1>
+        <h1>
+          {confirmed.paymentFailed ? "Payment Was Not Completed." : "Thank You."}
+        </h1>
         <p>
-          {paymentFailed
+          {confirmed.paymentFailed
             ? "Paystack could not confirm this payment. No order will be fulfilled until payment succeeds."
-            : paid
+            : confirmed.paid
               ? "Your payment was successful and your PLEBS order is confirmed."
               : "Your PLEBS order has been received and is awaiting payment."}
         </p>
 
-        {orderNumber ? (
+        {confirmed.orderNumber ? (
           <dl className="editorial-page__specs">
             <div>
               <dt>Order number</dt>
-              <dd>{orderNumber}</dd>
+              <dd>{confirmed.orderNumber}</dd>
             </div>
             <div>
               <dt>Item</dt>
@@ -55,7 +116,7 @@ async function OrderConfirmationContent({
             <div>
               <dt>Payment</dt>
               <dd>
-                {paid
+                {confirmed.paid
                   ? "Paid securely through Paystack"
                   : "Awaiting payment"}
               </dd>
