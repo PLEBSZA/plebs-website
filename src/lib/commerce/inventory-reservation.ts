@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { calculateAvailableQuantity } from "@/lib/commerce/inventory-status";
 import { findStorefrontVariant, getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
-import { shouldDecrementReservedAfterOrphanClaim, shouldSkipExpiryForPaidOrder } from "@/lib/commerce/reservation-expiry-policy";
+import { shouldDecrementReservedAfterOrphanClaim, shouldSkipExpiryForPaidOrder, reservationExpiryScope, type ReservationExpiryScope } from "@/lib/commerce/reservation-expiry-policy";
 import { RESERVATION_CRON_BATCH } from "@/lib/cron/config";
 
 export async function getStockQuantity(sizeNameOrId: string): Promise<number> {
@@ -465,11 +465,15 @@ export async function settlePaidOrderReservationWithClient(
  * related order is not already paid. Payment after expiry re-reserves or
  * flags the order for owner review instead of converting missing stock.
  */
-export async function expireAbandonedReservations(limit = RESERVATION_CRON_BATCH) {
+export async function expireAbandonedReservations(
+  limit = RESERVATION_CRON_BATCH,
+  scope?: ReservationExpiryScope,
+) {
   const expired = await db.inventoryReservation.findMany({
     where: {
       status: ReservationStatus.ACTIVE,
       expiresAt: { lte: new Date() },
+      ...reservationExpiryScope(scope),
     },
     select: { id: true, orderId: true },
     take: limit,
@@ -559,6 +563,7 @@ export async function recoverExpiredReservationsIfBlocking(input: {
 
   const result = await expireAbandonedReservations(
     input.limit ?? RESERVATION_CRON_BATCH,
+    { variantId: variant.id },
   );
   return { ...result, attempted: true };
 }

@@ -18,3 +18,22 @@ export function applyOrphanReservedDecrement(
 export function shouldSkipExpiryForPaidOrder(paymentStatus: string) {
   return paymentStatus === "PAID";
 }
+
+export type ReservationExpiryScope = {
+  variantId?: string;
+  inventoryItemId?: string;
+};
+
+/**
+ * Cron cleanup stays global. Checkout recovery must name the blocked
+ * variant or inventory item so a 25-row batch cannot skip it.
+ */
+export function reservationExpiryScope(scope?: ReservationExpiryScope) {
+  if (scope?.inventoryItemId) {
+    return { inventoryItemId: scope.inventoryItemId };
+  }
+  if (scope?.variantId) {
+    return { inventoryItem: { variantId: scope.variantId } };
+  }
+  return {};
+}

@@ -20,6 +20,7 @@ import {
 } from "./policy";
 import {
   applyOrphanReservedDecrement,
+  reservationExpiryScope,
   shouldSkipExpiryForPaidOrder,
 } from "../commerce/reservation-expiry-policy";
 import {
@@ -428,5 +429,24 @@ describe("reservation expiry guards", () => {
     const source = read("src/lib/commerce/inventory-reservation.ts");
     assert.match(source, /shouldSkipExpiryForPaidOrder/);
     assert.match(source, /recoverExpiredReservationsIfBlocking/);
+  });
+
+  it("scopes checkout recovery to the blocked variant", () => {
+    assert.deepEqual(reservationExpiryScope({ variantId: "variant-1" }), {
+      inventoryItem: { variantId: "variant-1" },
+    });
+    assert.deepEqual(reservationExpiryScope({ inventoryItemId: "item-1" }), {
+      inventoryItemId: "item-1",
+    });
+    assert.deepEqual(reservationExpiryScope(), {});
+    const source = read("src/lib/commerce/inventory-reservation.ts");
+    assert.match(source, /reservationExpiryScope\(scope\)/);
+    assert.match(
+      source,
+      /expireAbandonedReservations\(\s*input\.limit \?\? RESERVATION_CRON_BATCH,\s*\{ variantId: variant\.id \},\s*\)/,
+    );
+    const cron = read("src/lib/cron/run-maintenance.ts");
+    assert.match(cron, /expireAbandonedReservations\(reservationLimit\)/);
+    assert.doesNotMatch(cron, /variantId/);
   });
 });
