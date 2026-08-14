@@ -11,6 +11,10 @@
   }
 }
 
+.form[hidden] {
+  display: none;
+}
+
 .main {
   display: grid;
   gap: var(--space-6);
@@ -19,11 +23,17 @@
 .introGroup {
   display: grid;
   gap: var(--space-3);
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
 }
 
 .main h1 {
   margin: 0;
   font-size: var(--font-size-h2);
+}
+
+.main h1:focus {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
 }
 
 .step {

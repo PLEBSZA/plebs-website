@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCart } from "@/components/cart/CartProvider";
 import {
   CHECKOUT_KEY_STORAGE,
   shouldApplyCheckoutPreparation,
   type CheckoutUiState,
 } from "@/lib/checkout/policy";
+import {
+  checkoutStepHandoff,
+  handoffCheckoutStepFocus,
+} from "@/lib/checkout/step-handoff";
 import { CONSENT_WORDING } from "@/lib/account/consent";
 import {
   checkoutDetailsSchema,
@@ -181,6 +185,11 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
   const router = useRouter();
   const { line, subtotal } = useCart();
   const formRef = useRef<HTMLFormElement>(null);
+  const detailsIntroRef = useRef<HTMLDivElement>(null);
+  const detailsHeadingRef = useRef<HTMLHeadingElement>(null);
+  const reviewCardRef = useRef<HTMLElement>(null);
+  const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
+  const pendingHandoffRef = useRef<ReturnType<typeof checkoutStepHandoff>>(null);
   const checkoutKeyRef = useRef<string>("");
   const lastDetailsRef = useRef<CheckoutDetailsInput | null>(null);
   const reviewStartedRef = useRef(0);
@@ -201,6 +210,33 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
   const selectedShipping = shippingMethods[0];
   const total = subtotal + (selectedShipping?.price ?? 0);
   uiStateRef.current = uiState;
+
+  function transitionUi(next: CheckoutUiState) {
+    const handoff = checkoutStepHandoff(uiStateRef.current, next);
+    if (handoff) pendingHandoffRef.current = handoff;
+    uiStateRef.current = next;
+    setUiState(next);
+  }
+
+  useLayoutEffect(() => {
+    const step = pendingHandoffRef.current;
+    if (!step) return;
+    pendingHandoffRef.current = null;
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    handoffCheckoutStepFocus({
+      scrollTarget:
+        step === "review" ? reviewCardRef.current : detailsIntroRef.current,
+      focusTarget:
+        step === "review"
+          ? reviewHeadingRef.current
+          : detailsHeadingRef.current,
+      prefersReducedMotion,
+    });
+  }, [uiState]);
 
   useEffect(() => {
     checkoutKeyRef.current = getOrCreateCheckoutKey();
@@ -260,7 +296,7 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
 
       if (!response.ok || !result.order || !result.checkoutToken) {
         if (!applyView) return;
-        setUiState("PREPARATION_ERROR");
+        transitionUi("PREPARATION_ERROR");
         setPreparationError(
           result.message ?? "Unable to reserve this order. You can edit details and try again.",
         );
@@ -285,7 +321,7 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
       setPrepared(next);
       if (!applyView) return;
       if (next.paymentReady) {
-        setUiState("PAYMENT_READY");
+        transitionUi("PAYMENT_READY");
         setPreparationError(result.paymentMessage ?? null);
         window.dispatchEvent(
           new CustomEvent("plebs:commerce-event", {
@@ -296,7 +332,7 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
           }),
         );
       } else {
-        setUiState("PREPARATION_ERROR");
+        transitionUi("PREPARATION_ERROR");
         setPreparationError(
           result.paymentMessage ??
             "Your order is reserved, but payment is not ready yet.",
@@ -313,7 +349,7 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
         return;
       }
       setOptimistic(reviewOrder);
-      setUiState("PREPARATION_ERROR");
+      transitionUi("PREPARATION_ERROR");
       setPreparationError("Something went wrong while reserving your order.");
     }
   }
@@ -361,7 +397,7 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
     setOptimistic(reviewOrder);
     setPrepared(null);
     setPreparationError(null);
-    setUiState("PREPARING");
+    transitionUi("PREPARING");
     window.dispatchEvent(
       new CustomEvent("plebs:commerce-event", {
         detail: {
@@ -397,20 +433,22 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
           paymentReady={prepared?.paymentReady ?? false}
           authorizationUrl={prepared?.authorizationUrl}
           preparationError={preparationError}
+          headingRef={reviewHeadingRef}
+          cardRef={reviewCardRef}
           onEdit={() => {
             prepareAttemptRef.current += 1;
-            setUiState("DETAILS");
             setPreparationError(null);
+            transitionUi("DETAILS");
           }}
           onRetryPrepare={() => {
             if (!lastDetailsRef.current || !line) {
-              setUiState("DETAILS");
+              transitionUi("DETAILS");
               return;
             }
             const attempt = prepareAttemptRef.current + 1;
             prepareAttemptRef.current = attempt;
-            setUiState("PREPARING");
             setPreparationError(null);
+            transitionUi("PREPARING");
             void prepareCheckout(
               lastDetailsRef.current,
               optimisticOrder({
@@ -432,9 +470,11 @@ export function CheckoutForm({ paymentMode, prefill }: CheckoutFormProps) {
       hidden={showReview}
     >
       <div className={styles.main}>
-        <div className={styles.introGroup}>
+        <div className={styles.introGroup} ref={detailsIntroRef}>
           <p className={styles.step}>Step 1 of 2 · Your details</p>
-          <h1>Checkout</h1>
+          <h1 tabIndex={-1} ref={detailsHeadingRef}>
+            Checkout
+          </h1>
           <p className={styles.intro}>
             Enter your delivery details, then review your order. Payment stays
             locked until the item is reserved

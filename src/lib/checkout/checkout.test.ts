@@ -19,6 +19,10 @@ import {
   shouldReusePaystackInitialization,
 } from "./policy";
 import {
+  checkoutStepHandoff,
+  checkoutStepScrollBehavior,
+} from "./step-handoff";
+import {
   applyOrphanReservedDecrement,
   reservationExpiryScope,
   shouldSkipExpiryForPaidOrder,
@@ -141,6 +145,22 @@ describe("checkout idempotency and Paystack reuse", () => {
     assert.equal(payEnabled("PREPARING", false), false);
     assert.equal(payEnabled("PAYMENT_READY", false), false);
     assert.equal(payEnabled("PAYMENT_READY", true), true);
+    assert.equal(payEnabled("PREPARATION_ERROR", true), false);
+  });
+
+  it("requests a one-time focus handoff only when crossing the details/review boundary", () => {
+    assert.equal(checkoutStepHandoff("DETAILS", "PREPARING"), "review");
+    assert.equal(checkoutStepHandoff("DETAILS", "PAYMENT_READY"), "review");
+    assert.equal(checkoutStepHandoff("PREPARING", "PAYMENT_READY"), null);
+    assert.equal(checkoutStepHandoff("PREPARING", "PREPARATION_ERROR"), null);
+    assert.equal(checkoutStepHandoff("PAYMENT_READY", "PREPARATION_ERROR"), null);
+    assert.equal(checkoutStepHandoff("PREPARATION_ERROR", "PREPARING"), null);
+    assert.equal(checkoutStepHandoff("PREPARING", "DETAILS"), "details");
+    assert.equal(checkoutStepHandoff("PAYMENT_READY", "DETAILS"), "details");
+    assert.equal(checkoutStepHandoff("PREPARATION_ERROR", "DETAILS"), "details");
+    assert.equal(checkoutStepHandoff("DETAILS", "DETAILS"), null);
+    assert.equal(checkoutStepScrollBehavior(true), "auto");
+    assert.equal(checkoutStepScrollBehavior(false), "smooth");
   });
 
   it("ignores stale preparation when the customer has returned to details", () => {
@@ -233,17 +253,21 @@ describe("checkout source contracts", () => {
     const cart = read("src/components/cart/CartProvider.tsx");
     const beacon = read("src/components/analytics/PurchaseBeacon.tsx");
     const review = read("src/components/checkout/CheckoutReview.tsx");
-    assert.match(form, /setUiState\("PREPARING"\)/);
+    assert.match(form, /transitionUi\("PREPARING"\)/);
     assert.match(form, /void prepareCheckout/);
+    assert.doesNotMatch(form, /await prepareCheckout/);
     assert.doesNotMatch(form, /clearCart\(/);
     assert.doesNotMatch(form, /begin_checkout/);
     assert.match(form, /firstCheckoutInputName/);
+    assert.match(form, /invalid\.focus\(\)/);
     assert.match(cart, /sessionStorage/);
     assert.match(cart, /CART_STORAGE_KEY/);
     assert.match(beacon, /plebs:clear-cart/);
     assert.match(review, /location\.assign/);
     assert.match(review, /Edit details/);
     assert.match(review, /Cancel checkout/);
+    assert.match(review, /payEnabled\(uiState, paymentReady\)/);
+    assert.match(review, /Boolean\(resolvedUrl\)/);
   });
 
   it("does not let account provisioning fail a paid order", () => {
@@ -285,6 +309,7 @@ describe("checkout source contracts", () => {
     const form = read("src/components/checkout/CheckoutForm.tsx");
     assert.match(form, /shouldApplyCheckoutPreparation/);
     assert.match(form, /prepareAttemptRef/);
+    assert.match(form, /prepareAttemptRef\.current \+= 1/);
     assert.match(form, /introGroup/);
     assert.match(form, /\/account\/register\//);
     const review = read("src/components/checkout/CheckoutReview.tsx");
@@ -383,6 +408,31 @@ describe("checkout source contracts", () => {
     assert.match(admin, /adminRunMaintenanceNowAction/);
     assert.match(admin, /maintenance.run/);
     assert.doesNotMatch(admin, /CRON_SECRET/);
+  });
+
+  it("hides the mounted details form and hands focus to review once", () => {
+    const css = read("src/components/checkout/CheckoutForm.module.css");
+    const form = read("src/components/checkout/CheckoutForm.tsx");
+    const review = read("src/components/checkout/CheckoutReview.tsx");
+    const reviewCss = read("src/components/checkout/CheckoutReview.module.css");
+    const handoff = read("src/lib/checkout/step-handoff.ts");
+
+    assert.match(css, /\.form\s*\{[\s\S]*?display:\s*grid;/);
+    assert.match(css, /\.form\[hidden\]\s*\{[\s\S]*?display:\s*none;/);
+    assert.doesNotMatch(css, /(?:^|[\s{,])\[hidden\]\s*\{/m);
+    assert.doesNotMatch(css, /visibility:\s*hidden/);
+    assert.match(form, /hidden=\{showReview\}/);
+    assert.doesNotMatch(form, /\{!showReview/);
+    assert.match(form, /checkoutStepHandoff/);
+    assert.match(form, /handoffCheckoutStepFocus/);
+    assert.match(form, /prefers-reduced-motion: reduce/);
+    assert.match(form, /tabIndex=\{-1\}/);
+    assert.match(form, /prepareAttemptRef\.current \+= 1/);
+    assert.match(review, /tabIndex=\{-1\}/);
+    assert.match(review, /Review your order/);
+    assert.match(reviewCss, /scroll-margin-top:\s*calc\(var\(--header-height\)/);
+    assert.match(handoff, /preventScroll:\s*true/);
+    assert.match(handoff, /prefersReducedMotion \? "auto" : "smooth"/);
   });
 });
 

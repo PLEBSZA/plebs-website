@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type Ref, useState } from "react";
 import { formatMoney } from "@/lib/money";
 import { productData } from "@/lib/product";
 import { getShippingMethod } from "@/lib/shipping";
@@ -56,6 +56,8 @@ type CheckoutReviewProps = {
   preparationError?: string | null;
   onEdit?: () => void;
   onRetryPrepare?: () => void;
+  headingRef?: Ref<HTMLHeadingElement>;
+  cardRef?: Ref<HTMLElement>;
 };
 
 export function CheckoutReview({
@@ -68,6 +70,8 @@ export function CheckoutReview({
   preparationError,
   onEdit,
   onRetryPrepare,
+  headingRef,
+  cardRef,
 }: CheckoutReviewProps) {
   const router = useRouter();
   const [retrying, setRetrying] = useState(false);
@@ -232,9 +236,11 @@ export function CheckoutReview({
 
   return (
     <div className={styles.shell}>
-      <article className={styles.card}>
+      <article className={styles.card} ref={cardRef}>
         <p className={styles.step}>Step 2 of 2 · Review & pay</p>
-        <h1>Review your order</h1>
+        <h1 tabIndex={-1} ref={headingRef}>
+          Review your order
+        </h1>
         <p className={styles.lead}>
           Check the item, total and delivery address, then pay securely
           {paymentMode === "test"

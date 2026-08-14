@@ -9,6 +9,7 @@
   display: grid;
   gap: var(--space-5);
   padding: clamp(1.5rem, 4vw, 2.5rem);
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-large);
   background:
@@ -34,6 +35,11 @@
   font-family: var(--font-display);
   font-size: var(--font-size-h2);
   line-height: 1.1;
+}
+
+.card h1:focus {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
 }
 
 .lead {
