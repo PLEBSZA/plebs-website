@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { createMerchantFeedHttpResult } from "@/lib/commerce/merchant-feed";
 import { getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 
-export const runtime = "nodejs";
-
 async function merchantFeedResponse(method: "GET" | "HEAD"): Promise<NextResponse> {
   await connection();
   const catalogue = await getStorefrontCatalogue();

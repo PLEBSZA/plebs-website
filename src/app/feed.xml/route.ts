@@ -7,8 +7,6 @@ import {
 import { getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 import { getCanonicalSiteUrl } from "@/lib/env";
 
-export const runtime = "nodejs";
-
 export async function GET() {
   await connection();
   const catalogue = await getStorefrontCatalogue();
