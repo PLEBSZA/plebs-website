@@ -30,6 +30,7 @@ export type StorefrontVariant = {
   onHand: number;
   reserved: number;
   status: string;
+  feedStatus: "UNPUBLISHED" | "PUBLISHED" | "EXCLUDED";
 };
 
 export type StorefrontCatalogue = {
@@ -59,4 +60,8 @@ export type StorefrontCatalogue = {
   colours: StorefrontColour[];
   sizes: StorefrontSize[];
   variants: StorefrontVariant[];
+  feedPublicationStatus: "UNPUBLISHED" | "PUBLISHED" | "EXCLUDED";
+  googleProductCategory: string | null;
+  identifierExists: boolean;
+  feedTitle: string;
 };

@@ -11,8 +11,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getCanonicalSiteUrl();
 
   // Include only canonical indexable URLs. No inflated priority or fake frequencies.
-  return siteConfig.routes.map((route) => ({
-    url: new URL(route.path, siteUrl).toString(),
-    lastModified,
-  }));
+  // Merchant feeds are noindex and must not appear here.
+  return siteConfig.routes
+    .filter((route) => !route.path.startsWith("/feeds"))
+    .map((route) => ({
+      url: new URL(route.path, siteUrl).toString(),
+      lastModified,
+    }));
 }

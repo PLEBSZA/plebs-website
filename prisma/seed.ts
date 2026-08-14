@@ -40,6 +40,11 @@ async function seed() {
       category: "Apparel",
       mainMaterial: "100% cotton corduroy, 350 GSM",
       itemGroupId: "PLB-D01",
+      publicationStatus: PublicationStatus.STOREFRONT_AND_FEED,
+      feedPublicationStatus: FeedStatus.PUBLISHED,
+      identifierExists: false,
+      googleProductCategory: "7132",
+      feedTitleOverride: "PLEBS 100% Cotton Corduroy Dungarees",
     },
     create: {
       name: "PLEBS 100% Cotton Corduroy Dungarees",
@@ -50,11 +55,13 @@ async function seed() {
       productType: "Dungarees",
       category: "Apparel",
       status: ProductStatus.ACTIVE,
-      publicationStatus: PublicationStatus.STOREFRONT,
+      publicationStatus: PublicationStatus.STOREFRONT_AND_FEED,
       mainMaterial: "100% cotton corduroy, 350 GSM",
       itemGroupId: "PLB-D01",
       feedPublicationStatus: FeedStatus.PUBLISHED,
       identifierExists: false,
+      googleProductCategory: "7132",
+      feedTitleOverride: "PLEBS 100% Cotton Corduroy Dungarees",
     },
   });
 
@@ -159,6 +166,7 @@ async function seed() {
         retailPrice: "799.99",
         currency: "ZAR",
         status: VariantStatus.ACTIVE,
+        feedStatus: FeedStatus.PUBLISHED,
       },
       create: {
         productId: product.id,

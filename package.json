@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/lib/commerce/merchant-feed.test.ts",
     "media:prepare": "node scripts/prepare-media.mjs",
     "email:render": "tsx scripts/render-email-previews.tsx",
     "email:export": "tsx scripts/sync-resend-templates.tsx --export",

@@ -63,3 +63,5 @@ Use this before Search Console and merchant setup. Mark each item only when veri
 - [ ] Homepage and product URL inspection succeeds
 - [ ] Structured-data reports are reviewed
 - [ ] Merchant feed uses factual titles and no invented GTIN
+- [ ] Merchant TSV is submitted from `https://www.plebs.co.za/feeds/google-merchant.tsv`
+- [ ] Merchant Center account-level delivery charges match the actual checkout charge

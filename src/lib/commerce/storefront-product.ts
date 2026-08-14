@@ -113,6 +113,7 @@ export async function getStorefrontCatalogue(
         lowStockThreshold: level?.lowStockThreshold ?? 3,
         colourCode: variant.colourValue.code,
         sizeCode: variant.sizeValue.code,
+        feedStatus: variant.feedStatus,
       };
     })
     .sort(
@@ -225,7 +226,12 @@ export async function getStorefrontCatalogue(
       onHand: variant.onHand,
       reserved: variant.reserved,
       status: variant.status,
+      feedStatus: variant.feedStatus,
     })),
+    feedPublicationStatus: product.feedPublicationStatus,
+    googleProductCategory: product.googleProductCategory,
+    identifierExists: product.identifierExists,
+    feedTitle: product.feedTitleOverride?.trim() || product.name,
   };
 }
 

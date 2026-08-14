@@ -106,6 +106,7 @@ export function buildProductGroupJsonLd(
       color: variant.colourName,
       size: variant.sizeName,
       sku: variant.sku,
+      mpn: variant.sku,
       isVariantOf: { "@id": groupId },
       url: variantUrl.toString(),
       offers: {

@@ -69,7 +69,12 @@ export function catalogueFromStatic(): StorefrontCatalogue {
       available: size.stockQuantity,
       onHand: size.stockQuantity,
       reserved: 0,
-      status: size.available ? "ACTIVE" : "INACTIVE",
+      status: "ACTIVE",
+      feedStatus: "PUBLISHED",
     })),
+    feedPublicationStatus: "PUBLISHED",
+    googleProductCategory: "7132",
+    identifierExists: false,
+    feedTitle: productData.name,
   };
 }
