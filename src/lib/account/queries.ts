@@ -5,41 +5,103 @@ import {
   PaymentStatus,
   type Prisma,
 } from "@/generated/prisma/client";
+import {
+  ACCOUNT_ORDERS_PAGE_SIZE,
+  parseAccountOrdersPage,
+} from "@/lib/account/account-ui";
 import { db } from "@/lib/db";
 
 export async function getCustomerDashboard(customerId: string) {
-  const customer = await db.customer.findUniqueOrThrow({
-    where: { id: customerId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          emailVerified: true,
-          passwordHash: true,
-          lastLoginAt: true,
-          active: true,
-          role: true,
+  const [customer, orderCount, addressCount, latestOrder] = await Promise.all([
+    db.customer.findUniqueOrThrow({
+      where: { id: customerId },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        user: {
+          select: {
+            emailVerified: true,
+            passwordHash: true,
+            active: true,
+          },
+        },
+        preferences: {
+          where: { purpose: CommunicationPurpose.NEWSLETTER_EMAIL },
+          select: { status: true, updatedAt: true },
+          take: 1,
         },
       },
-      preferences: true,
-      orders: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        include: { items: true, payments: true, fulfilments: true },
+    }),
+    db.order.count({ where: { customerId } }),
+    db.address.count({ where: { customerId } }),
+    db.order.findFirst({
+      where: { customerId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        number: true,
+        createdAt: true,
+        total: true,
+        currency: true,
+        paymentStatus: true,
+        fulfilmentStatus: true,
       },
-    },
-  });
+    }),
+  ]);
 
-  return customer;
+  return {
+    email: customer.email,
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    phone: customer.phone,
+    hasPassword: Boolean(customer.user?.passwordHash),
+    emailVerified: customer.user?.emailVerified ?? null,
+    accountActive: customer.user?.active ?? false,
+    newsletterStatus: customer.preferences[0]?.status ?? null,
+    orderCount,
+    addressCount,
+    latestOrder,
+  };
 }
 
-export async function listCustomerOrders(customerId: string) {
-  return db.order.findMany({
-    where: { customerId },
-    orderBy: { createdAt: "desc" },
-    include: { items: true, payments: true, fulfilments: true },
+export async function getCustomerProfile(customerId: string) {
+  return db.customer.findUniqueOrThrow({
+    where: { id: customerId },
+    select: {
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+    },
   });
+}
+
+export async function listCustomerOrders(customerId: string, pageRaw?: unknown) {
+  const page = parseAccountOrdersPage(pageRaw);
+  const take = ACCOUNT_ORDERS_PAGE_SIZE;
+  const skip = (page - 1) * take;
+  const [orders, total] = await Promise.all([
+    db.order.findMany({
+      where: { customerId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      select: {
+        id: true,
+        number: true,
+        createdAt: true,
+        total: true,
+        currency: true,
+        paymentStatus: true,
+        fulfilmentStatus: true,
+      },
+    }),
+    db.order.count({ where: { customerId } }),
+  ]);
+
+  return { orders, total, page, pageSize: take };
 }
 
 export async function getCustomerOrder(customerId: string, number: string) {
@@ -47,9 +109,9 @@ export async function getCustomerOrder(customerId: string, number: string) {
     where: { customerId, number },
     include: {
       items: true,
-      payments: true,
+      payments: { orderBy: { createdAt: "desc" } },
       fulfilments: { orderBy: { createdAt: "desc" } },
-      returnRequests: true,
+      returnRequests: { orderBy: { createdAt: "desc" } },
     },
   });
 }

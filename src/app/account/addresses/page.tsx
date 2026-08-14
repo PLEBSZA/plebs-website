@@ -1,8 +1,8 @@
 import { createPageMetadata } from "@/lib/metadata";
 import { requireCustomerSession } from "@/lib/account/customer-dal";
 import { listCustomerAddresses } from "@/lib/account/queries";
+import { AccountPageHeader } from "@/components/account/AccountPrimitives";
 import { AddressManager } from "./AddressManager";
-import styles from "../account.module.css";
 
 export const metadata = createPageMetadata({
   title: "Addresses",
@@ -17,12 +17,12 @@ export default async function AddressesPage() {
 
   return (
     <>
-      <header className={styles.header}>
-        <h1>Addresses</h1>
-        <p className={styles.lede}>
-          Saved addresses are for convenience. Order snapshots stay unchanged.
+      <AccountPageHeader title="Addresses">
+        <p>
+          Saved addresses are for convenience. Changing them never rewrites a
+          past order snapshot.
         </p>
-      </header>
+      </AccountPageHeader>
       <AddressManager addresses={addresses} />
     </>
   );

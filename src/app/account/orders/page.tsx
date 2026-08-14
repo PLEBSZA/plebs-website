@@ -1,7 +1,20 @@
 import Link from "next/link";
-import { createPageMetadata } from "@/lib/metadata";
+import {
+  AccountEmptyState,
+  AccountPageHeader,
+  AccountStatusBadge,
+  fulfilmentBadgeTone,
+  paymentBadgeTone,
+} from "@/components/account/AccountPrimitives";
 import { requireCustomerSession } from "@/lib/account/customer-dal";
+import {
+  ACCOUNT_ORDERS_PAGE_SIZE,
+  formatAccountDate,
+  friendlyFulfilmentStatus,
+  friendlyPaymentStatus,
+} from "@/lib/account/account-ui";
 import { listCustomerOrders } from "@/lib/account/queries";
+import { createPageMetadata } from "@/lib/metadata";
 import { formatMoney } from "@/lib/money";
 import styles from "../account.module.css";
 
@@ -12,49 +25,86 @@ export const metadata = createPageMetadata({
   noIndex: true,
 });
 
-export default async function AccountOrdersPage() {
+export default async function AccountOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await requireCustomerSession();
-  const orders = await listCustomerOrders(session.customerId);
+  const { page: pageParam } = await searchParams;
+  const { orders, total, page, pageSize } = await listCustomerOrders(
+    session.customerId,
+    pageParam,
+  );
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <>
-      <header className={styles.header}>
-        <h1>Orders</h1>
-        <p className={styles.lede}>Only your purchases are listed here.</p>
-      </header>
-      {orders.length === 0 ? (
-        <p>No orders yet.</p>
+      <AccountPageHeader title="Orders">
+        <p>Only purchases linked to this account are listed here.</p>
+      </AccountPageHeader>
+
+      {total === 0 ? (
+        <AccountEmptyState title="No orders yet">
+          Your order history will appear here after you buy PLEBS dungarees.
+        </AccountEmptyState>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th scope="col">Order</th>
-              <th scope="col">Date</th>
-              <th scope="col">Total</th>
-              <th scope="col">Payment</th>
-              <th scope="col">Fulfilment</th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          <ul className={styles.orderList}>
             {orders.map((order) => (
-              <tr key={order.id}>
-                <td>
-                  <Link href={`/account/orders/${order.number}/`} className={styles.link}>
-                    {order.number}
+              <li key={order.id} className={styles.orderCard}>
+                <p className={styles.orderNumber}>{order.number}</p>
+                <p className={styles.orderMeta}>
+                  {formatAccountDate(order.createdAt)} ·{" "}
+                  {formatMoney(Number(order.total), order.currency)}
+                </p>
+                <p className={styles.orderBadges}>
+                  <AccountStatusBadge tone={paymentBadgeTone(order.paymentStatus)}>
+                    {friendlyPaymentStatus(order.paymentStatus)}
+                  </AccountStatusBadge>
+                  <AccountStatusBadge tone={fulfilmentBadgeTone(order.fulfilmentStatus)}>
+                    {friendlyFulfilmentStatus(order.fulfilmentStatus)}
+                  </AccountStatusBadge>
+                </p>
+                <p>
+                  <Link
+                    href={`/account/orders/${order.number}/`}
+                    className={styles.link}
+                  >
+                    View order
                   </Link>
-                </td>
-                <td>
-                  {new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium" }).format(
-                    order.createdAt,
-                  )}
-                </td>
-                <td>{formatMoney(Number(order.total), order.currency)}</td>
-                <td>{order.paymentStatus.replaceAll("_", " ").toLowerCase()}</td>
-                <td>{order.fulfilmentStatus.replaceAll("_", " ").toLowerCase()}</td>
-              </tr>
+                </p>
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+          {total > ACCOUNT_ORDERS_PAGE_SIZE ? (
+            <nav className={styles.pagination} aria-label="Order pages">
+              {page > 1 ? (
+                <Link
+                  href={page === 2 ? "/account/orders/" : `/account/orders/?page=${page - 1}`}
+                  className={styles.secondary}
+                >
+                  Previous
+                </Link>
+              ) : (
+                <span />
+              )}
+              <p>
+                Page {page} of {pageCount}
+              </p>
+              {page < pageCount ? (
+                <Link
+                  href={`/account/orders/?page=${page + 1}`}
+                  className={styles.secondary}
+                >
+                  Next
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          ) : null}
+        </>
       )}
     </>
   );

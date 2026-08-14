@@ -1,8 +1,8 @@
 import { createPageMetadata } from "@/lib/metadata";
 import { requireCustomerSession } from "@/lib/account/customer-dal";
-import { db } from "@/lib/db";
+import { getCustomerProfile } from "@/lib/account/queries";
+import { AccountPageHeader } from "@/components/account/AccountPrimitives";
 import { ProfileForm } from "./ProfileForm";
-import styles from "../account.module.css";
 
 export const metadata = createPageMetadata({
   title: "Profile",
@@ -13,17 +13,15 @@ export const metadata = createPageMetadata({
 
 export default async function ProfilePage() {
   const session = await requireCustomerSession();
-  const customer = await db.customer.findUniqueOrThrow({
-    where: { id: session.customerId },
-  });
+  const customer = await getCustomerProfile(session.customerId);
 
   return (
     <>
-      <header className={styles.header}>
-        <h1>Profile</h1>
-        <p className={styles.lede}>Email stays {customer.email} and cannot be changed here.</p>
-      </header>
+      <AccountPageHeader title="Profile">
+        <p>Keep your contact details current for deliveries and account emails.</p>
+      </AccountPageHeader>
       <ProfileForm
+        email={customer.email}
         firstName={customer.firstName ?? ""}
         lastName={customer.lastName ?? ""}
         phone={customer.phone ?? ""}

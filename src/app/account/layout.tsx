@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { customerLogoutAction } from "@/app/account/actions";
+import { AccountSectionNav } from "@/components/account/AccountSectionNav";
+import { AccountWorkspaceSkeleton } from "@/components/account/AccountPrimitives";
 import { MarketingShell } from "@/components/layout/MarketingShell";
 import { getCustomerSession } from "@/lib/account/customer-dal";
 import styles from "./account.module.css";
@@ -11,19 +12,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const nav = [
-  { href: "/account/", label: "Overview" },
-  { href: "/account/orders/", label: "Orders" },
-  { href: "/account/profile/", label: "Profile" },
-  { href: "/account/addresses/", label: "Addresses" },
-  { href: "/account/preferences/", label: "Email preferences" },
-];
-
 export default function AccountLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<AccountWorkspaceSkeleton />}>
       <AccountShell>{children}</AccountShell>
     </Suspense>
   );
@@ -39,26 +32,33 @@ async function AccountShell({ children }: { children: React.ReactNode }) {
 
 async function AccountFrame({ children }: { children: React.ReactNode }) {
   const session = await getCustomerSession();
+  const displayName = [session?.firstName, session?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
   return (
     <section className={`section ${styles.page}`}>
       <div className="container">
         {session ? (
-          <>
-            <nav className={styles.nav} aria-label="Account">
-              {nav.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  {item.label}
-                </Link>
-              ))}
-              <form action={customerLogoutAction}>
-                <button type="submit" className={styles.secondary}>
+          <div className={styles.workspace}>
+            <aside className={styles.sidebar}>
+              <div className={styles.sidebarIdentity}>
+                <p className={styles.sidebarHeading}>My account</p>
+                {displayName ? (
+                  <p className={styles.sidebarName}>{displayName}</p>
+                ) : null}
+                <p className={styles.sidebarEmail}>{session.email}</p>
+              </div>
+              <AccountSectionNav />
+              <form action={customerLogoutAction} className={styles.signOut}>
+                <button type="submit" className={styles.signOutButton}>
                   Sign out
                 </button>
               </form>
-            </nav>
-            {children}
-          </>
+            </aside>
+            <div className={styles.content}>{children}</div>
+          </div>
         ) : (
           children
         )}

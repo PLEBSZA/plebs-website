@@ -25,6 +25,15 @@ import {
   outboxMayMarkSynced,
   shouldProcessClaimedOutboxJob,
 } from "./outbox-policy";
+import {
+  ACCOUNT_NAV_ITEMS,
+  ACCOUNT_ORDERS_PAGE_SIZE,
+  friendlyFulfilmentStatus,
+  friendlyNewsletterStatus,
+  friendlyPaymentStatus,
+  isAccountNavActive,
+  parseAccountOrdersPage,
+} from "./account-ui";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -418,5 +427,182 @@ describe("outbox claim and failure states", () => {
       }),
       true,
     );
+  });
+});
+
+describe("signed-in account area", () => {
+  it("keeps exactly five account destinations and separates Sign out", () => {
+    assert.equal(ACCOUNT_NAV_ITEMS.length, 5);
+    assert.deepEqual(
+      ACCOUNT_NAV_ITEMS.map((item) => item.label),
+      ["Overview", "Orders", "Profile", "Addresses", "Email preferences"],
+    );
+    assert.equal(
+      ACCOUNT_NAV_ITEMS.some((item) => /sign out/i.test(item.label)),
+      false,
+    );
+
+    const nav = readFileSync(
+      join(root, "src/components/account/AccountSectionNav.tsx"),
+      "utf8",
+    );
+    const layout = readFileSync(join(root, "src/app/account/layout.tsx"), "utf8");
+    assert.match(nav, /ACCOUNT_NAV_ITEMS/);
+    assert.match(nav, /aria-label="Account"/);
+    assert.match(nav, /usePathname/);
+    assert.doesNotMatch(nav, /Sign out/);
+    assert.match(layout, /customerLogoutAction/);
+    assert.match(layout, /className=\{styles\.signOut\}/);
+    assert.doesNotMatch(layout, /fallback=\{null\}/);
+  });
+
+  it("marks the active account route, including nested orders", () => {
+    assert.equal(isAccountNavActive("/account/", "/account/"), true);
+    assert.equal(isAccountNavActive("/account", "/account/"), true);
+    assert.equal(isAccountNavActive("/account/orders/", "/account/"), false);
+    assert.equal(isAccountNavActive("/account/profile/", "/account/"), false);
+    assert.equal(isAccountNavActive("/account/orders/", "/account/orders/"), true);
+    assert.equal(
+      isAccountNavActive("/account/orders/PLB-1001/", "/account/orders/"),
+      true,
+    );
+    assert.equal(isAccountNavActive("/account/profile/", "/account/profile/"), true);
+    assert.equal(
+      isAccountNavActive("/account/addresses/", "/account/addresses/"),
+      true,
+    );
+    assert.equal(
+      isAccountNavActive("/account/preferences/", "/account/preferences/"),
+      true,
+    );
+  });
+
+  it("validates order pagination query values", () => {
+    assert.equal(ACCOUNT_ORDERS_PAGE_SIZE, 20);
+    assert.equal(parseAccountOrdersPage(undefined), 1);
+    assert.equal(parseAccountOrdersPage("foo"), 1);
+    assert.equal(parseAccountOrdersPage("-3"), 1);
+    assert.equal(parseAccountOrdersPage("0"), 1);
+    assert.equal(parseAccountOrdersPage("2"), 2);
+    assert.equal(parseAccountOrdersPage("99999"), 500);
+  });
+
+  it("uses friendly payment, fulfilment and newsletter labels", () => {
+    assert.equal(friendlyPaymentStatus("PENDING"), "Awaiting payment");
+    assert.equal(friendlyPaymentStatus("PAID"), "Paid");
+    assert.equal(friendlyFulfilmentStatus("PROCESSING"), "Processing");
+    assert.equal(friendlyFulfilmentStatus("FULFILLED"), "Dispatched");
+    assert.equal(friendlyFulfilmentStatus("DELIVERED"), "Delivered");
+    assert.equal(friendlyNewsletterStatus("OPTED_IN"), "Subscribed");
+    assert.equal(friendlyNewsletterStatus("OPTED_OUT"), "Not subscribed");
+    assert.equal(
+      friendlyNewsletterStatus("PENDING_CONFIRMATION"),
+      "Confirmation pending",
+    );
+    assert.equal(friendlyNewsletterStatus("SUPPRESSED"), "Suppressed");
+    assert.equal(friendlyNewsletterStatus(null), "Not subscribed");
+  });
+
+  it("requires customer authentication on signed-in account pages", () => {
+    const pages = [
+      "src/app/account/page.tsx",
+      "src/app/account/orders/page.tsx",
+      "src/app/account/orders/[number]/page.tsx",
+      "src/app/account/profile/page.tsx",
+      "src/app/account/addresses/page.tsx",
+      "src/app/account/preferences/page.tsx",
+    ];
+    for (const relative of pages) {
+      const source = readFileSync(join(root, relative), "utf8");
+      assert.match(source, /requireCustomerSession\(\)/);
+      assert.match(source, /noIndex:\s*true/);
+    }
+  });
+
+  it("keeps order and address mutations scoped to the signed-in customer", () => {
+    const queries = readFileSync(join(root, "src/lib/account/queries.ts"), "utf8");
+    const actions = readFileSync(join(root, "src/app/account/actions.ts"), "utf8");
+    assert.match(queries, /where: \{ customerId, number \}/);
+    assert.match(queries, /where: \{ customerId \}/);
+    assert.match(queries, /payments: \{ orderBy: \{ createdAt: "desc" \} \}/);
+    assert.match(queries, /fulfilments: \{ orderBy: \{ createdAt: "desc" \} \}/);
+
+    const profile = actions.slice(
+      actions.indexOf("export async function updateProfileAction"),
+      actions.indexOf("export async function saveAddressAction"),
+    );
+    assert.match(profile, /requireCustomerSession\(\)/);
+    assert.match(profile, /accountProfileSchema/);
+    assert.match(profile, /where: \{ id: session\.customerId \}/);
+    assert.match(profile, /where: \{ id: session\.userId \}/);
+    assert.doesNotMatch(profile, /formData\.get\("customerId"\)/);
+    assert.doesNotMatch(profile, /console\.(log|info|error)/);
+
+    const saveAddress = actions.slice(
+      actions.indexOf("export async function saveAddressAction"),
+      actions.indexOf("export async function deleteAddressAction"),
+    );
+    assert.match(saveAddress, /where: \{ id, customerId: session\.customerId \}/);
+    assert.match(saveAddress, /result\.count === 0/);
+    assert.match(saveAddress, /accountAddressSchema/);
+
+    const deleteAddress = actions.slice(
+      actions.indexOf("export async function deleteAddressAction"),
+      actions.indexOf("export async function updateNewsletterPreferenceAction"),
+    );
+    assert.match(deleteAddress, /where: \{ id, customerId: session\.customerId \}/);
+  });
+
+  it("does not expose password hashes from the dashboard query", () => {
+    const queries = readFileSync(join(root, "src/lib/account/queries.ts"), "utf8");
+    const dashboard = queries.slice(
+      queries.indexOf("export async function getCustomerDashboard"),
+      queries.indexOf("export async function getCustomerProfile"),
+    );
+    const page = readFileSync(join(root, "src/app/account/page.tsx"), "utf8");
+    assert.match(
+      dashboard,
+      /hasPassword: Boolean\(customer\.user\?\.passwordHash\)/,
+    );
+    assert.doesNotMatch(dashboard, /passwordHash: customer/);
+    assert.doesNotMatch(page, /passwordHash/);
+  });
+
+  it("preserves newsletter status distinctions and empty states", () => {
+    const preferences = readFileSync(
+      join(root, "src/app/account/preferences/page.tsx"),
+      "utf8",
+    );
+    const form = readFileSync(
+      join(root, "src/app/account/preferences/PreferencesForm.tsx"),
+      "utf8",
+    );
+    const orders = readFileSync(join(root, "src/app/account/orders/page.tsx"), "utf8");
+    const addresses = readFileSync(
+      join(root, "src/app/account/addresses/AddressManager.tsx"),
+      "utf8",
+    );
+    assert.match(preferences, /friendlyNewsletterStatus/);
+    assert.match(preferences, /No restock requests/);
+    assert.match(form, /PENDING_CONFIRMATION/);
+    assert.match(form, /SUPPRESSED/);
+    assert.match(form, /provider complaint/);
+    assert.match(orders, /No orders yet/);
+    assert.match(addresses, /No saved addresses/);
+    assert.match(addresses, /name="phone"/);
+    assert.match(addresses, /Edit/);
+    assert.match(addresses, /Confirm remove/);
+  });
+
+  it("shows a branded loading state and hides raw account errors", () => {
+    const loading = readFileSync(join(root, "src/app/account/loading.tsx"), "utf8");
+    const error = readFileSync(join(root, "src/app/account/error.tsx"), "utf8");
+    assert.match(loading, /AccountLoadingState/);
+    assert.match(error, /We couldn’t load your account/);
+    assert.match(error, /unstable_retry/);
+    assert.match(error, /Contact PLEBS/);
+    assert.doesNotMatch(error, /error\.message/);
+    assert.doesNotMatch(error, /error\.stack/);
+    assert.match(error, /digest: error\.digest/);
   });
 });

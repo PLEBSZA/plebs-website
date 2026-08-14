@@ -1,10 +1,22 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { AccountTokenPurpose, OutboxEventType } from "@/generated/prisma/client";
+import {
+  AccountTokenPurpose,
+  CommunicationChannel,
+  CommunicationPurpose,
+  OutboxEventType,
+  PreferenceStatus,
+} from "@/generated/prisma/client";
 import { signIn, signOut } from "@/auth";
+import {
+  accountAddressSchema,
+  accountProfileSchema,
+  flattenAccountFieldErrors,
+} from "@/lib/account/account-schema";
 import {
   CONSENT_WORDING,
   GENERIC_ACCOUNT_RESPONSE,
@@ -241,22 +253,32 @@ export async function updateProfileAction(
   formData: FormData,
 ): Promise<AccountFormState> {
   const session = await requireCustomerSession();
-  const firstName = String(formData.get("firstName") || "").trim();
-  const lastName = String(formData.get("lastName") || "").trim();
-  const phone = String(formData.get("phone") || "").trim();
-  if (!firstName || !lastName) {
-    return { error: "Enter your first and last name." };
+  const parsed = accountProfileSchema.safeParse({
+    firstName: String(formData.get("firstName") ?? ""),
+    lastName: String(formData.get("lastName") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+  });
+  if (!parsed.success) {
+    return { fieldErrors: flattenAccountFieldErrors(parsed.error) };
   }
+
+  const firstName = parsed.data.firstName;
+  const lastName = parsed.data.lastName;
+  const phone = parsed.data.phone?.trim() || null;
+
   await db.$transaction(async (tx) => {
     await tx.customer.update({
       where: { id: session.customerId },
-      data: { firstName, lastName, phone: phone || null },
+      data: { firstName, lastName, phone },
     });
     await tx.user.update({
       where: { id: session.userId },
       data: { name: `${firstName} ${lastName}` },
     });
   });
+  revalidatePath("/account/");
+  revalidatePath("/account/profile/");
+  revalidatePath("/", "layout");
   return { message: "Profile saved." };
 }
 
@@ -265,31 +287,49 @@ export async function saveAddressAction(
   formData: FormData,
 ): Promise<AccountFormState> {
   const session = await requireCustomerSession();
-  const id = String(formData.get("id") || "");
-  const data = {
-    firstName: String(formData.get("firstName") || "").trim() || null,
-    lastName: String(formData.get("lastName") || "").trim() || null,
-    line1: String(formData.get("line1") || "").trim(),
-    line2: String(formData.get("line2") || "").trim() || null,
-    city: String(formData.get("city") || "").trim(),
-    province: String(formData.get("province") || "").trim(),
-    postalCode: String(formData.get("postalCode") || "").trim(),
-    country: "South Africa",
-    phone: String(formData.get("phone") || "").trim() || null,
-  };
-  if (!data.line1 || !data.city || !data.province || !data.postalCode) {
-    return { error: "Enter a complete South African delivery address." };
+  const parsed = accountAddressSchema.safeParse({
+    id: String(formData.get("id") ?? ""),
+    firstName: String(formData.get("firstName") ?? ""),
+    lastName: String(formData.get("lastName") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+    line1: String(formData.get("line1") ?? ""),
+    line2: String(formData.get("line2") ?? ""),
+    city: String(formData.get("city") ?? ""),
+    province: String(formData.get("province") ?? ""),
+    postalCode: String(formData.get("postalCode") ?? ""),
+  });
+  if (!parsed.success) {
+    return { fieldErrors: flattenAccountFieldErrors(parsed.error) };
   }
+
+  const { id, ...fields } = parsed.data;
+  const data = {
+    firstName: fields.firstName,
+    lastName: fields.lastName,
+    phone: fields.phone?.trim() || null,
+    line1: fields.line1,
+    line2: fields.line2?.trim() || null,
+    city: fields.city,
+    province: fields.province,
+    postalCode: fields.postalCode,
+    country: "South Africa",
+  };
+
   if (id) {
-    await db.address.updateMany({
+    const result = await db.address.updateMany({
       where: { id, customerId: session.customerId },
       data,
     });
+    if (result.count === 0) {
+      return { error: "That address could not be updated." };
+    }
   } else {
     await db.address.create({
       data: { ...data, customerId: session.customerId },
     });
   }
+  revalidatePath("/account/");
+  revalidatePath("/account/addresses/");
   return { message: "Address saved. Past orders keep their original snapshot." };
 }
 
@@ -299,6 +339,8 @@ export async function deleteAddressAction(formData: FormData) {
   await db.address.deleteMany({
     where: { id, customerId: session.customerId },
   });
+  revalidatePath("/account/");
+  revalidatePath("/account/addresses/");
 }
 
 export async function updateNewsletterPreferenceAction(
@@ -308,6 +350,24 @@ export async function updateNewsletterPreferenceAction(
   const session = await requireCustomerSession();
   const optedIn = formData.get("newsletter") === "on";
   const copy = CONSENT_WORDING.ACCOUNT_PREFERENCES_NEWSLETTER;
+
+  const current = await db.communicationPreference.findUnique({
+    where: {
+      customerId_purpose_channel: {
+        customerId: session.customerId,
+        purpose: CommunicationPurpose.NEWSLETTER_EMAIL,
+        channel: CommunicationChannel.EMAIL,
+      },
+    },
+    select: { status: true },
+  });
+
+  if (current?.status === PreferenceStatus.SUPPRESSED) {
+    return {
+      error:
+        "This email is suppressed from marketing messages. Contact PLEBS if you need help.",
+    };
+  }
 
   await db.$transaction(async (tx) => {
     if (optedIn) {
@@ -329,6 +389,8 @@ export async function updateNewsletterPreferenceAction(
     }
   });
   scheduleOutboxProcessing();
+  revalidatePath("/account/");
+  revalidatePath("/account/preferences/");
   return {
     message: optedIn
       ? "You are subscribed to PLEBS news and updates."
