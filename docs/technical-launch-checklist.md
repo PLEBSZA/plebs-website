@@ -2,6 +2,20 @@
 
 Use this before Search Console and merchant setup. Mark each item only when verified against the live production domain.
 
+## Hosting and commercial use
+
+Vercel currently limits Hobby cron jobs to once daily and describes Hobby as
+restricted to **non-commercial personal use**. A live store that accepts
+payments must use Pro or another hosting plan that expressly permits
+commercial checkout. Hobby is suitable for low-volume staging only.
+
+- [ ] Hosting plan expressly permits commercial checkout (not Vercel Hobby)
+- [ ] Paystack remains in **test mode** until that hosting gate is confirmed
+- [ ] Live Paystack keys are an owner-controlled launch step, never automatic
+
+See [Cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing) and
+[Hobby plan](https://vercel.com/docs/plans/hobby).
+
 ## Crawl and indexation
 
 - [ ] Production domain resolves correctly (`https://www.plebs.co.za`)
@@ -68,11 +82,26 @@ Use this before Search Console and merchant setup. Mark each item only when veri
 
 ## Checkout and payments
 
-- [ ] All four Prisma migrations are applied in order on a Neon branch, then production (`add_customer_role`, `customer_accounts_consent`, `checkout_key`, `order_inventory_hold`)
-- [ ] `CRON_SECRET` is set on Vercel; Hobby cron runs once daily (`0 4 * * *`)
+- [ ] Apply all four Prisma migrations **on a Neon branch first**, in order:
+      `20260814090000_add_customer_role`,
+      `20260814090100_customer_accounts_consent`,
+      `20260814100000_checkout_key`,
+      `20260814120000_order_inventory_hold`
+- [ ] Test signup, reset, checkout, Paystack callback/webhook, reservation
+      expiry, inventory hold, and admin “Run maintenance now” against that branch
+- [ ] Back up production
+- [ ] Apply the same four migrations with `prisma migrate deploy`
+- [ ] Deploy compatible application code immediately afterward
+- [ ] Set `CRON_SECRET` in Vercel only (32+ bytes of entropy, never
+      `NEXT_PUBLIC_`). Hobby cron: `GET /api/cron/integration-outbox/` at
+      `0 2 * * *` (02:00 UTC), 60s, 15 outbox jobs, 25 reservation expiries
+- [ ] Confirm hosting permits commercial use (Hobby is staging-only)
+- [ ] Confirm Paystack **live** keys separately; keep test mode until both
+      hosting and live-key gates are complete
 - [ ] Cart Checkout CTA is visible without scrolling at 1366×600, 1280×720, 390×844 and 360×800
 - [ ] Review appears immediately after local validation; Pay stays disabled until reservation + Paystack init
-- [ ] Paystack live keys are configured only when taking real payments; test mode copy remains visible on test keys
 - [ ] Delivery copy still says timing is to be confirmed until a courier promise exists
 - [ ] Cart survives refresh until a verified paid confirmation
+- [ ] Header Sign in at 320/360/375/768 does not overflow; account lives in the
+      mobile drawer. Desktop (≥900) keeps Sign in / initials in the header.
 

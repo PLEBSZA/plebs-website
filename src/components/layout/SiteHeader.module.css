@@ -94,7 +94,13 @@
 }
 
 .headerAccount {
-  display: inline-flex;
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .headerAccount {
+    display: inline-flex;
+  }
 }
 
 .cartCount {

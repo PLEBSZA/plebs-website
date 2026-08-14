@@ -5,6 +5,10 @@ import {
   consumePendingPurchase,
   emitAnalytics,
 } from "@/lib/analytics/emit";
+import {
+  shouldClearCartOnConfirmation,
+  shouldEmitPurchaseAnalytics,
+} from "@/lib/checkout/confirmation";
 
 type PurchaseBeaconProps = {
   orderNumber: string | null;
@@ -19,7 +23,14 @@ export function PurchaseBeacon({ orderNumber, paid }: PurchaseBeaconProps) {
   const fired = useRef(false);
 
   useEffect(() => {
-    if (!paid || !orderNumber || fired.current) return;
+    if (
+      !shouldEmitPurchaseAnalytics(paid) ||
+      !shouldClearCartOnConfirmation(paid) ||
+      !orderNumber ||
+      fired.current
+    ) {
+      return;
+    }
 
     const pending = consumePendingPurchase();
     fired.current = true;

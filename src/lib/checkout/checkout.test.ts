@@ -4,6 +4,12 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  confirmationCopy,
+  confirmationTone,
+  shouldClearCartOnConfirmation,
+  shouldEmitPurchaseAnalytics,
+} from "./confirmation";
+import {
   checkoutIdentitiesMatch,
   clientPriceIsAuthoritative,
   parseCartSnapshot,
@@ -12,6 +18,10 @@ import {
   shouldApplyCheckoutPreparation,
   shouldReusePaystackInitialization,
 } from "./policy";
+import {
+  applyOrphanReservedDecrement,
+  shouldSkipExpiryForPaidOrder,
+} from "../commerce/reservation-expiry-policy";
 import {
   checkoutDetailsSchema,
   checkoutInputFromRequestBody,
@@ -254,7 +264,7 @@ describe("checkout source contracts", () => {
     assert.match(reservation, /expireAbandonedReservations/);
     assert.match(reservation, /settlePaidOrderReservationWithClient/);
     assert.match(reservation, /claimAndReleaseOrphanReservation|updateMany/);
-    assert.match(reservation, /claimed\.count !== 1/);
+    assert.match(reservation, /shouldDecrementReservedAfterOrphanClaim/);
   });
 
   it("cancels only unpaid orders inside one locked transaction", () => {
@@ -269,12 +279,15 @@ describe("checkout source contracts", () => {
     assert.match(confirmation, /getCheckoutOrder/);
     assert.match(confirmation, /CHECKOUT_COOKIE_NAME/);
     assert.match(confirmation, /resolveCheckoutConfirmationLookup/);
-    assert.doesNotMatch(confirmation, /params\.paid === "true"/);
+    assert.doesNotMatch(confirmation, /params\.paid/);
+    assert.doesNotMatch(confirmation, /params\.token/);
     const form = read("src/components/checkout/CheckoutForm.tsx");
     assert.match(form, /shouldApplyCheckoutPreparation/);
     assert.match(form, /prepareAttemptRef/);
     assert.match(form, /introGroup/);
     assert.match(form, /\/account\/register\//);
+    const review = read("src/components/checkout/CheckoutReview.tsx");
+    assert.doesNotMatch(review, /paid=true/);
   });
 
   it("does not let a newer checkout cookie steal an older Paystack callback", () => {
@@ -306,6 +319,16 @@ describe("checkout source contracts", () => {
       queryOrderNumber: "PLEBS-A",
     });
     assert.equal(overwrittenCookie, null);
+
+    const paidQueryIgnored = resolveCheckoutConfirmationLookup({
+      checkoutOrderNumber: "PLEBS-A",
+      checkoutToken: "token-a",
+      queryOrderNumber: "PLEBS-A",
+    });
+    assert.deepEqual(paidQueryIgnored, {
+      orderNumber: "PLEBS-A",
+      checkoutToken: "token-a",
+    });
   });
 
   it("keeps the Paystack confirmation token out of the redirect URL", () => {
@@ -329,14 +352,13 @@ describe("checkout source contracts", () => {
     const outbox = read("src/app/api/cron/integration-outbox/route.ts");
     assert.match(outbox, /export const \{ GET, POST \}/);
     assert.match(outbox, /CRON_SECRET|cronHandlers/);
-    assert.match(outbox, /maxDuration/);
-    assert.match(outbox, /OUTBOX_CRON_BATCH/);
-    const vercel = read("vercel.json");
-    assert.match(vercel, /\/api\/cron\/integration-outbox\//);
-    assert.match(vercel, /"schedule": "0 4 \* \* \*"/);
-    assert.match(vercel, /"maxDuration": 300/);
+    assert.match(outbox, /export const maxDuration = 60;/);
+    const vercel = JSON.parse(read("vercel.json")) as {
+      crons: Array<{ path: string; schedule: string }>;
+    };
+    assert.equal(vercel.crons[0]?.schedule, "0 2 * * *");
     assert.doesNotMatch(
-      vercel,
+      read("vercel.json"),
       /"path": "\/api\/cron\/expire-reservations/,
     );
     const authorize = read("src/lib/cron/authorize.ts");
@@ -354,5 +376,57 @@ describe("checkout source contracts", () => {
     const listing = read("src/lib/orders.ts");
     assert.match(listing, /inventoryHold: true/);
     assert.match(listing, /inventoryHold: false/);
+    const orders = read("src/lib/orders.ts");
+    assert.match(orders, /recoverExpiredReservationsIfBlocking/);
+    const admin = read("src/app/admin/actions/customers.ts");
+    assert.match(admin, /adminRunMaintenanceNowAction/);
+    assert.match(admin, /maintenance.run/);
+    assert.doesNotMatch(admin, /CRON_SECRET/);
+  });
+});
+
+describe("confirmation copy and paid-only side effects", () => {
+  it("uses pending copy unless Paystack failure or verified PAID", () => {
+    assert.deepEqual(confirmationCopy(confirmationTone({ paid: true, paymentFailed: true })), {
+      kicker: "Order confirmed",
+      heading: "Thank you.",
+      body: "Your payment was successful and your PLEBS order is confirmed.",
+      paymentLabel: "Paid securely through Paystack",
+    });
+    assert.equal(
+      confirmationCopy(confirmationTone({ paid: false, paymentFailed: true })).heading,
+      "Payment unsuccessful.",
+    );
+    assert.equal(
+      confirmationCopy(confirmationTone({ paid: false, paymentFailed: false })).heading,
+      "Payment pending",
+    );
+  });
+
+  it("clears the cart and emits purchase analytics only when paid", () => {
+    assert.equal(shouldClearCartOnConfirmation(true), true);
+    assert.equal(shouldEmitPurchaseAnalytics(true), true);
+    assert.equal(shouldClearCartOnConfirmation(false), false);
+    assert.equal(shouldEmitPurchaseAnalytics(false), false);
+    const beacon = read("src/components/analytics/PurchaseBeacon.tsx");
+    assert.match(beacon, /shouldEmitPurchaseAnalytics\(paid\)/);
+    assert.match(beacon, /plebs:clear-cart/);
+  });
+});
+
+describe("reservation expiry guards", () => {
+  it("decrements reserved inventory only for the winning orphan claim", () => {
+    const afterFirst = applyOrphanReservedDecrement(4, 1, 1);
+    const afterDuplicate = applyOrphanReservedDecrement(afterFirst, 1, 0);
+    assert.equal(afterFirst, 3);
+    assert.equal(afterDuplicate, 3);
+  });
+
+  it("never releases a paid order reservation", () => {
+    assert.equal(shouldSkipExpiryForPaidOrder("PAID"), true);
+    assert.equal(shouldSkipExpiryForPaidOrder("PENDING"), false);
+    const source = read("src/lib/commerce/inventory-reservation.ts");
+    assert.match(source, /shouldSkipExpiryForPaidOrder/);
+    assert.match(source, /recoverExpiredReservationsIfBlocking/);
   });
 });

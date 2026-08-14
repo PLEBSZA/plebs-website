@@ -21,6 +21,7 @@ import { ensureCustomerAccount } from "@/lib/account/ensure-account";
 import { recoveryOutboxEventType } from "@/lib/account/policy";
 import { consumeThrottle } from "@/lib/account/throttle";
 import { consumeAccountToken } from "@/lib/account/tokens";
+import { safeInternalCallbackPath } from "@/lib/auth/callback-url";
 import { db } from "@/lib/db";
 
 export type AccountFormState = {
@@ -47,7 +48,7 @@ export async function customerLoginAction(
   }
 
   const email = normalizeEmail(parsed.data.email);
-  const callbackUrl = String(formData.get("callbackUrl") || "/account/");
+  const callbackUrl = safeInternalCallbackPath(formData.get("callbackUrl"));
 
   try {
     await signIn("credentials", {
@@ -71,7 +72,7 @@ export async function customerLoginAction(
     return { error: "Invalid email or password." };
   }
 
-  redirect(callbackUrl.startsWith("/account") ? callbackUrl : "/account/");
+  redirect(callbackUrl);
 }
 
 export async function registerAccountAction(

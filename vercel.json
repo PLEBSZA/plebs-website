@@ -3,18 +3,18 @@
   "crons": [
     {
       "path": "/api/cron/integration-outbox/",
-      "schedule": "0 4 * * *"
+      "schedule": "0 2 * * *"
     }
   ],
   "functions": {
     "src/app/api/cron/integration-outbox/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     },
     "src/app/api/cron/expire-reservations/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     },
     "src/app/api/cron/auto-complete-orders/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   }
 }

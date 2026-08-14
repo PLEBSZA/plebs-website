@@ -66,6 +66,10 @@
   color: var(--color-moss);
 }
 
+.account {
+  margin: 0 0 1.5rem;
+}
+
 .list {
   display: grid;
   gap: 0.35rem;

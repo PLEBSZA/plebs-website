@@ -137,6 +137,24 @@
   padding: 0.45rem 0.65rem;
 }
 
+.button {
+  appearance: none;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-forest-900);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .badge {
   display: inline-block;
   margin-left: 0.35rem;

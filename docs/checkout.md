@@ -40,6 +40,20 @@ orders, reservations and payment readiness.
 
 ## Owner launch gates
 
-- Apply `20260814100000_checkout_key` on a Neon branch before production.
-- Switch Paystack to live keys only when ready to take real payments.
+- Apply all four account/checkout migrations on a Neon branch before
+  production, then `prisma migrate deploy` and matching application code.
+- Vercel Hobby is for staging only. A live store that accepts payments needs
+  a hosting plan that expressly permits commercial use.
+- Switch Paystack to live keys only when hosting and the owner are ready.
+  There is no automatic live-mode switch. Honest test-mode copy stays visible
+  when the test key is set.
 - Confirm the courier/delivery promise before changing “timing to be confirmed”.
+
+## Reservation recovery on Hobby
+
+Successful checkout never runs a global expiry sweep. If reservation fails
+and expired ACTIVE rows may be holding this variant’s stock, checkout runs a
+bounded cleanup (25 rows) **outside** the original transaction, then retries
+reservation **once**. That keeps the checkout transaction small. The daily
+cron remains the full recovery sweep; admin **Run maintenance now** covers
+the gap between runs. Paid-order reservations are never released.

@@ -12,8 +12,10 @@ import type { ReactNode } from "react";
 
 export function SiteHeader({
   accountNav,
+  mobileAccountNav,
 }: {
   accountNav?: ReactNode;
+  mobileAccountNav?: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
@@ -97,6 +99,7 @@ export function SiteHeader({
         id={menuId}
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
+        accountNav={mobileAccountNav}
       />
       <CartDrawer />
     </header>

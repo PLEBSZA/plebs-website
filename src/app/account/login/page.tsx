@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createPageMetadata } from "@/lib/metadata";
 import { getCustomerSession } from "@/lib/account/customer-dal";
+import { safeInternalCallbackPath } from "@/lib/auth/callback-url";
 import { CustomerLoginForm } from "../CustomerLoginForm";
 
 export const metadata = createPageMetadata({
@@ -15,9 +16,10 @@ export default async function AccountLoginPage({
 }: {
   searchParams: Promise<{ callbackUrl?: string; activated?: string; reset?: string }>;
 }) {
-  const session = await getCustomerSession();
-  if (session) redirect("/account/");
   const params = await searchParams;
+  const callbackUrl = safeInternalCallbackPath(params.callbackUrl);
+  const session = await getCustomerSession();
+  if (session) redirect(callbackUrl);
   const notice = params.activated
     ? "Your account is ready. Sign in with your new password."
     : params.reset
@@ -25,6 +27,6 @@ export default async function AccountLoginPage({
       : undefined;
 
   return (
-    <CustomerLoginForm callbackUrl={params.callbackUrl} notice={notice} />
+    <CustomerLoginForm callbackUrl={callbackUrl} notice={notice} />
   );
 }

@@ -6,6 +6,7 @@ import { listProductsForAdmin } from "@/lib/commerce/catalogue-service";
 import { getOrderNextAction } from "@/lib/commerce/order-next-action";
 import { listRecentOrdersForAdmin, getAdminOrderViewCounts } from "@/lib/orders";
 import { formatMoney } from "@/lib/money";
+import { RunMaintenanceNow } from "./RunMaintenanceNow";
 import styles from "./admin-pages.module.css";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 export default async function AdminOverviewPage() {
   await requireAdminSession();
   const canManageReturns = await adminCan("returns:manage");
+  const canRunMaintenance = await adminCan("customers:manage");
   const [inventory, products, orders, counts] = await Promise.all([
     getDashboardInventorySummary(),
     listProductsForAdmin(),
@@ -72,6 +74,8 @@ export default async function AdminOverviewPage() {
           </article>
         ) : null}
       </section>
+
+      {canRunMaintenance ? <RunMaintenanceNow /> : null}
 
       <section className={styles.panel}>
         <h2>Products</h2>

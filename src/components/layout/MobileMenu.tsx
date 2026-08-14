@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCart } from "@/components/cart/CartProvider";
+import type { ReactNode } from "react";
 import { siteConfig } from "@/lib/site";
 import styles from "./MobileMenu.module.css";
 
@@ -19,11 +19,10 @@ type MobileMenuProps = {
   id: string;
   open: boolean;
   onClose: () => void;
+  accountNav?: ReactNode;
 };
 
-export function MobileMenu({ id, open, onClose }: MobileMenuProps) {
-  const { count, openCart } = useCart();
-
+export function MobileMenu({ id, open, onClose, accountNav }: MobileMenuProps) {
   return (
     <div
       id={id}
@@ -40,6 +39,9 @@ export function MobileMenu({ id, open, onClose }: MobileMenuProps) {
           <span aria-hidden="true">×</span>
           <span className="visually-hidden">Close menu</span>
         </button>
+        {accountNav ? (
+          <div className={styles.account}>{accountNav}</div>
+        ) : null}
         <p className={styles.title}>Explore</p>
         <ul className={styles.list}>
           {mobileNav.map((item) => (
@@ -49,18 +51,6 @@ export function MobileMenu({ id, open, onClose }: MobileMenuProps) {
               </Link>
             </li>
           ))}
-          <li>
-            <button
-              type="button"
-              className={styles.cart}
-              onClick={() => {
-                onClose();
-                openCart();
-              }}
-            >
-              Cart ({count})
-            </button>
-          </li>
         </ul>
       </nav>
     </div>

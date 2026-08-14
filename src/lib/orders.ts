@@ -16,10 +16,12 @@ import {
 } from "@/lib/checkout/schema";
 import { db } from "@/lib/db";
 import {
+  recoverExpiredReservationsIfBlocking,
   releaseOrderReservationWithClient,
   syncOrderReservationWithClient,
   type InventoryTx,
 } from "@/lib/commerce/inventory-reservation";
+import { RESERVATION_CRON_BATCH } from "@/lib/cron/config";
 import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
 import { findStorefrontVariant } from "@/lib/commerce/storefront-product";
 import { getReusablePaystackRedirect } from "@/lib/commerce/paystack";
@@ -396,13 +398,15 @@ export async function createOrder(input: CreateOrderInput) {
     };
   }
 
-  try {
+  const commitCheckout = async () => {
     const result = await db.$transaction((tx) =>
       upsertCheckoutInTransaction(tx, parsed.data, shipping),
     );
     revalidateStorefrontCatalogue();
     return result;
-  } catch (error) {
+  };
+
+  const checkoutFailure = (error: unknown) => {
     if (error instanceof StockUnavailableError) {
       return {
         ok: false as const,
@@ -417,36 +421,44 @@ export async function createOrder(input: CreateOrderInput) {
         message: error.message,
       };
     }
-    if (isUniqueConstraint(error)) {
-      try {
-        const result = await db.$transaction((tx) =>
-          upsertCheckoutInTransaction(tx, parsed.data, shipping),
-        );
-        revalidateStorefrontCatalogue();
-        return result;
-      } catch (retryError) {
-        if (retryError instanceof StockUnavailableError) {
-          return {
-            ok: false as const,
-            code: "out_of_stock" as const,
-            message: retryError.message,
-          };
-        }
-        if (retryError instanceof CheckoutConflictError) {
-          return {
-            ok: false as const,
-            code: "conflict" as const,
-            message: retryError.message,
-          };
-        }
-      }
-    }
     return {
       ok: false as const,
       code: "validation" as const,
       message:
         error instanceof Error ? error.message : "Unable to create the order.",
     };
+  };
+
+  const recoverExpiredThenRetryOnce = async (error: unknown) => {
+    if (!(error instanceof StockUnavailableError)) {
+      return checkoutFailure(error);
+    }
+    const recovered = await recoverExpiredReservationsIfBlocking({
+      colour: parsed.data.colour,
+      size: parsed.data.size,
+      limit: RESERVATION_CRON_BATCH,
+    });
+    if (recovered.released === 0) {
+      return checkoutFailure(error);
+    }
+    try {
+      return await commitCheckout();
+    } catch (retryError) {
+      return checkoutFailure(retryError);
+    }
+  };
+
+  try {
+    return await commitCheckout();
+  } catch (error) {
+    if (isUniqueConstraint(error)) {
+      try {
+        return await commitCheckout();
+      } catch (retryError) {
+        return recoverExpiredThenRetryOnce(retryError);
+      }
+    }
+    return recoverExpiredThenRetryOnce(error);
   }
 }
 

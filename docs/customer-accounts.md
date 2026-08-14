@@ -20,8 +20,11 @@ Resend Contacts/Topics are a synchronized delivery view.
    - `RESEND_WEBHOOK_SECRET` — signed `contact.updated` webhook to
      `/api/webhooks/resend/`
    - `INTEGRATION_OUTBOX_CRON_SECRET` — retry route
-     `/api/cron/integration-outbox/`
-   - `CRON_SECRET` — Vercel Cron `Authorization: Bearer` for the scheduled GET
+     `/api/cron/integration-outbox/` (manual)
+   - `CRON_SECRET` — Vercel Cron `Authorization: Bearer` for the scheduled GET.
+     Generate at least 32 bytes of entropy. Store only in Vercel. This secret
+     authenticates maintenance only; it does not encrypt customer data,
+     authenticate shoppers, or verify Paystack.
 5. Export/publish the new transactional templates with
    `npm run email:export` then owner-controlled `npm run email:sync`. Do not
    run sync against production from this agent session.
@@ -48,23 +51,33 @@ South African legal review of the privacy policy.
 
 - Preference/account writes enqueue `integration_outbox` in the same
   transaction.
-- `after()` processes the outbox after the HTTP response.
+- `after()` processes the outbox after the HTTP response for Create Account,
+  forgot password, newsletter, restock account setup, and paid-order
+  provisioning. The user-facing response does not wait for Resend. The daily
+  cron is recovery for failed or interrupted work, not the normal delivery
+  path.
+- Jobs are claimed with a conditional `PENDING|FAILED → PROCESSING` update.
+  A second worker that loses the claim does not send. Cooldown and daily-limit
+  failures stay `FAILED`, never `SYNCED`. Stale `PROCESSING` jobs return to
+  `PENDING` after 5 minutes. Provider errors never roll back a paid order.
 - Cron/manual retry: `GET` or `POST` `/api/cron/integration-outbox/` with
   `Authorization: Bearer <CRON_SECRET>` (Vercel) or
-  `Authorization: Bearer <INTEGRATION_OUTBOX_CRON_SECRET>` (manual). This also
-  expires abandoned inventory reservations. Dedicated route:
+  `Authorization: Bearer <INTEGRATION_OUTBOX_CRON_SECRET>` (manual). Missing
+  secrets return 503; invalid secrets return 401. This also expires abandoned
+  inventory reservations. Dedicated route:
   `GET`/`POST` `/api/cron/expire-reservations/`. `vercel.json` schedules only
-  the integration-outbox path once per day at 04:00 UTC (`0 4 * * *`), which
-  is the Hobby-plan maximum frequency. The route sets `maxDuration` to 300
-  seconds and processes up to 50 outbox jobs plus 100 reservation expiries per
-  run. Orphan reservation expiry claims `ACTIVE → RELEASED` before decrementing
-  reserved stock.
-- Jobs left in `PROCESSING` after a crash are returned to `PENDING` after 5
-  minutes.
-- Token cooldown or daily-limit during email send is retryable. The outbox
-  stays failed until a token can actually be issued and sent.
+  the integration-outbox path once per day at 02:00 UTC (`0 2 * * *`), which
+  is the Hobby-plan maximum frequency. Duration is 60 seconds; each run
+  processes up to 15 outbox jobs plus 25 reservation expiries. Orphan
+  reservation expiry claims `ACTIVE → RELEASED` before decrementing reserved
+  stock, and never releases a paid order.
+- Admin overview **Run maintenance now** (owner / customers:manage) calls the
+  same services on the server. It does not expose `CRON_SECRET` to the
+  browser. It processes at most 15 outbox jobs and 25 reservations, shows
+  counts only, and writes an audit event. Safe to press repeatedly.
 - Admin customer detail shows sync status, sanitized errors and retry.
-- Email/Resend failure never rolls back a paid order.
+- Vercel Hobby is not production-ready for a live commercial store. Keep
+  Paystack in test mode until hosting permits commercial checkout.
 
 ## Public account recovery
 
@@ -72,11 +85,15 @@ South African legal review of the privacy policy.
   or reuses the customer, and sends setup (no password) or reset (has
   password). It does not grant newsletter consent.
 - Forgot password uses the same recovery rule for unactivated accounts.
-- Header signed-out control is **Sign in**, which opens a dialog (bottom sheet
-  on small screens) with email, password, Forgot password, and
-  **New to Plebs? Create account**. `/account/login/` and `/account/sign-in/`
-  remain full-page fallbacks; `/account/register/` stays the create-account
-  page and does not grant newsletter consent.
+- Header signed-out control is **Sign in**. Desktop (≥900px) opens a dialog
+  with email, password, Forgot password, and **New to Plebs? Create account**.
+  Below 900px the same control lives in the mobile drawer; the header keeps
+  Cart only. `/account/login/` and `/account/sign-in/` remain full-page
+  fallbacks; `/account/register/` stays the create-account page and does not
+  grant newsletter consent.
+- Signing in from checkout returns to `/checkout/` via a server-validated
+  same-site `callbackUrl`. External, protocol-relative, and backslash
+  destinations are rejected.
 - Header signed-in control is circular initials (first + last name, else the
   first email character) opening My account, Orders, Personal details, and
   Sign out.

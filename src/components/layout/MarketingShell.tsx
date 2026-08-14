@@ -44,6 +44,11 @@ export async function MarketingShell({
                 <AccountNav />
               </Suspense>
             }
+            mobileAccountNav={
+              <Suspense fallback={<AccountNavFallback />}>
+                <AccountNav />
+              </Suspense>
+            }
           />
           <main id="main-content" className="site-main">
             {children}

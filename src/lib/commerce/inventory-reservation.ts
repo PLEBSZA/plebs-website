@@ -3,7 +3,6 @@ import "server-only";
 import {
   InventoryMovementReason,
   InventoryMovementType,
-  PaymentStatus,
   ReservationStatus,
   VariantStatus,
   type Prisma,
@@ -12,6 +11,8 @@ import { db } from "@/lib/db";
 import { calculateAvailableQuantity } from "@/lib/commerce/inventory-status";
 import { findStorefrontVariant, getStorefrontCatalogue } from "@/lib/commerce/storefront-product";
 import { revalidateStorefrontCatalogue } from "@/lib/commerce/revalidate-storefront";
+import { shouldDecrementReservedAfterOrphanClaim, shouldSkipExpiryForPaidOrder } from "@/lib/commerce/reservation-expiry-policy";
+import { RESERVATION_CRON_BATCH } from "@/lib/cron/config";
 
 export async function getStockQuantity(sizeNameOrId: string): Promise<number> {
   const catalogue = await getStorefrontCatalogue();
@@ -176,7 +177,7 @@ async function claimAndReleaseOrphanReservation(tx: InventoryTx, id: string) {
       releasedAt: new Date(),
     },
   });
-  if (claimed.count !== 1) return false;
+  if (!shouldDecrementReservedAfterOrphanClaim(claimed.count)) return false;
 
   const reservation = await tx.inventoryReservation.findUnique({
     where: { id },
@@ -464,7 +465,7 @@ export async function settlePaidOrderReservationWithClient(
  * related order is not already paid. Payment after expiry re-reserves or
  * flags the order for owner review instead of converting missing stock.
  */
-export async function expireAbandonedReservations(limit = 50) {
+export async function expireAbandonedReservations(limit = RESERVATION_CRON_BATCH) {
   const expired = await db.inventoryReservation.findMany({
     where: {
       status: ReservationStatus.ACTIVE,
@@ -495,7 +496,7 @@ export async function expireAbandonedReservations(limit = 50) {
         where: { id: orderId },
         select: { paymentStatus: true },
       });
-      if (!order || order.paymentStatus === PaymentStatus.PAID) {
+      if (!order || shouldSkipExpiryForPaidOrder(order.paymentStatus)) {
         return false;
       }
       const stillExpired = await tx.inventoryReservation.count({
@@ -524,4 +525,40 @@ export async function expireAbandonedReservations(limit = 50) {
   }
 
   return { examined: expired.length, released };
+}
+
+/**
+ * Bounded recovery for Hobby: only runs after a failed reservation, and only
+ * when expired ACTIVE rows may be holding stock for this variant. Successful
+ * checkouts never pay this cost. Cleanup is outside the checkout transaction
+ * so the original reservation lock stays small; checkout then retries once.
+ */
+export async function recoverExpiredReservationsIfBlocking(input: {
+  colour: string;
+  size: string;
+  limit?: number;
+}) {
+  const variant = await findStorefrontVariant({
+    colour: input.colour,
+    size: input.size,
+  });
+  if (!variant?.id) {
+    return { examined: 0, released: 0, attempted: false };
+  }
+
+  const blocking = await db.inventoryReservation.count({
+    where: {
+      status: ReservationStatus.ACTIVE,
+      expiresAt: { lte: new Date() },
+      inventoryItem: { variantId: variant.id },
+    },
+  });
+  if (blocking === 0) {
+    return { examined: 0, released: 0, attempted: false };
+  }
+
+  const result = await expireAbandonedReservations(
+    input.limit ?? RESERVATION_CRON_BATCH,
+  );
+  return { ...result, attempted: true };
 }

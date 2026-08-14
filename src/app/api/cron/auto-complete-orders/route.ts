@@ -3,7 +3,7 @@ import { autoCompleteDeliveredOrders } from "@/lib/commerce/fulfilment-service";
 import { cronHandlers } from "@/lib/cron/authorize";
 
 // Literal required by Next.js segment config. Keep in sync with vercel.json.
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 /**
  * Cron/manual trigger for auto-completing delivered orders.

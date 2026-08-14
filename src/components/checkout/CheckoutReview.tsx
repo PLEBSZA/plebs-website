@@ -214,7 +214,7 @@ export function CheckoutReview({
           <p className={styles.lead}>Order {order.number} is already paid.</p>
           <Link
             className={styles.primary}
-            href={`/order-confirmation/?order=${encodeURIComponent(order.number)}&paid=true`}
+            href={`/order-confirmation/?order=${encodeURIComponent(order.number)}`}
           >
             View confirmation
           </Link>

@@ -20,6 +20,11 @@ import {
   authorizeAdminPath,
   isPublicAccountPath,
 } from "../auth/authorize";
+import { safeInternalCallbackPath } from "../auth/callback-url";
+import {
+  outboxMayMarkSynced,
+  shouldProcessClaimedOutboxJob,
+} from "./outbox-policy";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -263,6 +268,7 @@ describe("repository guards", () => {
     assert.match(menu, /role="dialog"/);
     assert.match(menu, /role="menu"/);
     assert.match(menu, /My account/);
+    assert.match(menu, /usePathname/);
     assert.match(nav, /accountMenuIdentity/);
     assert.doesNotMatch(nav, /Create account/);
     const register = readFileSync(
@@ -272,11 +278,114 @@ describe("repository guards", () => {
     assert.match(register, /CONSENT_WORDING\.ACCOUNT_REGISTER/);
   });
 
+  it("does not duplicate independently interactive account menus on mobile", () => {
+    const headerCss = readFileSync(
+      join(root, "src/components/layout/SiteHeader.module.css"),
+      "utf8",
+    );
+    const header = readFileSync(
+      join(root, "src/components/layout/SiteHeader.tsx"),
+      "utf8",
+    );
+    const mobile = readFileSync(
+      join(root, "src/components/layout/MobileMenu.tsx"),
+      "utf8",
+    );
+    assert.match(headerCss, /\.headerAccount \{[\s\S]*display: none;/);
+    assert.match(headerCss, /@media \(min-width: 900px\) \{[\s\S]*\.headerAccount/);
+    assert.match(header, /mobileAccountNav/);
+    assert.match(header, /styles\.headerAccount/);
+    assert.match(mobile, /accountNav/);
+    assert.doesNotMatch(mobile, /openCart/);
+  });
+
   it("stores historic consent against the supplied date", () => {
     const admin = readFileSync(
       join(root, "src/app/admin/actions/customers.ts"),
       "utf8",
     );
     assert.match(admin, /createdAt: new Date\(`\$\{occurredAt\}T12:00:00\.000Z`\)/);
+  });
+});
+
+describe("safe internal callback paths", () => {
+  it("accepts checkout, account, and storefront paths", () => {
+    assert.equal(safeInternalCallbackPath("/checkout/"), "/checkout/");
+    assert.equal(safeInternalCallbackPath("/account/orders/"), "/account/orders/");
+    assert.equal(
+      safeInternalCallbackPath("/products/cotton-corduroy-dungarees/"),
+      "/products/cotton-corduroy-dungarees/",
+    );
+  });
+
+  it("rejects absolute, protocol-relative, and backslash destinations", () => {
+    assert.equal(safeInternalCallbackPath("https://evil.example"), "/account/");
+    assert.equal(safeInternalCallbackPath("//evil.example"), "/account/");
+    assert.equal(safeInternalCallbackPath("/\\evil.example"), "/account/");
+    assert.equal(safeInternalCallbackPath("\\\\evil.example"), "/account/");
+    assert.equal(safeInternalCallbackPath("javascript:alert(1)"), "/account/");
+  });
+
+  it("returns checkout shoppers to checkout after sign-in", () => {
+    assert.equal(safeInternalCallbackPath("/checkout/"), "/checkout/");
+    const actions = readFileSync(join(root, "src/app/account/actions.ts"), "utf8");
+    assert.match(actions, /safeInternalCallbackPath\(formData\.get\("callbackUrl"\)\)/);
+    const form = readFileSync(
+      join(root, "src/components/checkout/CheckoutForm.tsx"),
+      "utf8",
+    );
+    assert.match(form, /callbackUrl=\/checkout\//);
+  });
+});
+
+describe("outbox claim and failure states", () => {
+  it("cannot send a duplicate logical email after a lost claim", () => {
+    assert.equal(shouldProcessClaimedOutboxJob(1), true);
+    assert.equal(shouldProcessClaimedOutboxJob(0), false);
+    assert.equal(
+      outboxMayMarkSynced({
+        claimedCount: 0,
+        sendFailed: false,
+        cooldown: false,
+        dailyLimit: false,
+      }),
+      false,
+    );
+    assert.equal(
+      outboxMayMarkSynced({
+        claimedCount: 1,
+        sendFailed: false,
+        cooldown: true,
+        dailyLimit: false,
+      }),
+      false,
+    );
+    assert.equal(
+      outboxMayMarkSynced({
+        claimedCount: 1,
+        sendFailed: false,
+        cooldown: false,
+        dailyLimit: true,
+      }),
+      false,
+    );
+    assert.equal(
+      outboxMayMarkSynced({
+        claimedCount: 1,
+        sendFailed: true,
+        cooldown: false,
+        dailyLimit: false,
+      }),
+      false,
+    );
+    assert.equal(
+      outboxMayMarkSynced({
+        claimedCount: 1,
+        sendFailed: false,
+        cooldown: false,
+        dailyLimit: false,
+      }),
+      true,
+    );
   });
 });

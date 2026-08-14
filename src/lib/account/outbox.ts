@@ -10,6 +10,7 @@ import {
   TOKEN_RESEND_COOLDOWN_MS,
 } from "@/lib/account/consent";
 import { AccountEmailRetryableError } from "@/lib/account/account-emails";
+import { shouldProcessClaimedOutboxJob } from "@/lib/account/outbox-policy";
 import { db } from "@/lib/db";
 
 export type OutboxTx = Prisma.TransactionClient;
@@ -72,7 +73,7 @@ export async function recoverStaleOutboxJobs(
   return recovered.count;
 }
 
-export async function processOutbox(limit = 20) {
+export async function processOutbox(limit = 15) {
   const staleRecovered = await recoverStaleOutboxJobs();
   const due = await db.integrationOutbox.findMany({
     where: {
@@ -98,7 +99,7 @@ export async function processOutbox(limit = 20) {
       },
       data: { status: OutboxStatus.PROCESSING, attempts: { increment: 1 } },
     });
-    if (claimed.count !== 1) continue;
+    if (!shouldProcessClaimedOutboxJob(claimed.count)) continue;
     results.processed += 1;
 
     try {
@@ -143,7 +144,7 @@ export async function scheduleOutboxProcessing() {
   const { after } = await import("next/server");
   after(async () => {
     try {
-      await processOutbox();
+      await processOutbox(15);
     } catch (error) {
       console.error(
         "Outbox processing failed:",

@@ -8,6 +8,10 @@ import {
   CONFIRMATION_COOKIE_NAME,
   parseCheckoutCookieValue,
 } from "@/lib/checkout/cookie";
+import {
+  confirmationCopy,
+  confirmationTone,
+} from "@/lib/checkout/confirmation";
 import { resolveCheckoutConfirmationLookup } from "@/lib/checkout/policy";
 import { createPageMetadata } from "@/lib/metadata";
 import { getCheckoutOrder } from "@/lib/orders";
@@ -77,6 +81,12 @@ async function OrderConfirmationContent({
     orderNumber,
     paymentFailed,
   });
+  const copy = confirmationCopy(
+    confirmationTone({
+      paid: confirmed.paid,
+      paymentFailed: confirmed.paymentFailed,
+    }),
+  );
 
   return (
     <section className="section">
@@ -85,19 +95,9 @@ async function OrderConfirmationContent({
         paid={confirmed.paid}
       />
       <div className="container container--reading">
-        <p className="editorial-page__kicker">
-          {confirmed.paymentFailed ? "Payment unsuccessful" : "Order confirmed"}
-        </p>
-        <h1>
-          {confirmed.paymentFailed ? "Payment Was Not Completed." : "Thank You."}
-        </h1>
-        <p>
-          {confirmed.paymentFailed
-            ? "Paystack could not confirm this payment. No order will be fulfilled until payment succeeds."
-            : confirmed.paid
-              ? "Your payment was successful and your PLEBS order is confirmed."
-              : "Your PLEBS order has been received and is awaiting payment."}
-        </p>
+        <p className="editorial-page__kicker">{copy.kicker}</p>
+        <h1>{copy.heading}</h1>
+        <p>{copy.body}</p>
 
         {confirmed.orderNumber ? (
           <dl className="editorial-page__specs">
@@ -116,9 +116,7 @@ async function OrderConfirmationContent({
             <div>
               <dt>Payment</dt>
               <dd>
-                {confirmed.paid
-                  ? "Paid securely through Paystack"
-                  : "Awaiting payment"}
+                {copy.paymentLabel}
               </dd>
             </div>
           </dl>

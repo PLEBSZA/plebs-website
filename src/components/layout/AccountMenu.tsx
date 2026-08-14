@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   useActionState,
   useEffect,
@@ -128,7 +129,7 @@ export function AccountMenu({
         className={signedIn ? styles.initials : styles.signIn}
         aria-haspopup={signedIn ? "menu" : "dialog"}
         aria-expanded={open}
-        aria-label={signedIn ? menuLabel : undefined}
+        aria-label={signedIn ? menuLabel : "Sign in"}
         onClick={(event) => {
           event.preventDefault();
           setOpen((current) => !current);
@@ -233,6 +234,7 @@ function SignInDialog({
     customerLoginAction,
     initialLogin,
   );
+  const pathname = usePathname();
 
   return (
     <div
@@ -249,7 +251,7 @@ function SignInDialog({
         </button>
       </div>
       <form className={styles.form} action={action} noValidate>
-        <input type="hidden" name="callbackUrl" value="/account/" />
+        <input type="hidden" name="callbackUrl" value={pathname || "/account/"} />
         <div className={styles.field}>
           <label htmlFor={emailId}>Email</label>
           <input

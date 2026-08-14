@@ -11,7 +11,18 @@ import { requireAdminSession } from "@/lib/admin/dal";
 import { recordAuditEvent } from "@/lib/admin/audit";
 import { withdrawNewsletter } from "@/lib/account/consent-service";
 import { enqueueOutbox, processOutbox, scheduleOutboxProcessing } from "@/lib/account/outbox";
+import { OUTBOX_CRON_BATCH, RESERVATION_CRON_BATCH } from "@/lib/cron/config";
+import { runIntegrationMaintenance } from "@/lib/cron/run-maintenance";
 import { db } from "@/lib/db";
+
+export type MaintenanceFormState = {
+  ok?: boolean;
+  error?: string;
+  outboxProcessed?: number;
+  outboxSynced?: number;
+  outboxFailed?: number;
+  reservationsReleased?: number;
+};
 
 export async function adminSuppressCustomerAction(formData: FormData) {
   const user = await requireAdminSession("customers:manage");
@@ -128,7 +139,35 @@ export async function adminRecordHistoricConsentAction(formData: FormData) {
   revalidatePath(`/admin/customers/${customerId}`);
 }
 
-export async function adminProcessOutboxAction() {
-  await requireAdminSession("customers:manage");
-  await processOutbox(20);
+export async function adminRunMaintenanceNowAction(
+  _prev: MaintenanceFormState,
+  _formData: FormData,
+): Promise<MaintenanceFormState> {
+  const actor = await requireAdminSession("customers:manage");
+  try {
+    const result = await runIntegrationMaintenance({
+      outboxLimit: OUTBOX_CRON_BATCH,
+      reservationLimit: RESERVATION_CRON_BATCH,
+    });
+    await recordAuditEvent({
+      actorId: actor.id,
+      action: "maintenance.run",
+      entityType: "integration_outbox",
+      entityId: "maintenance",
+      afterState: {
+        outboxProcessed: result.outbox.processed,
+        reservationsReleased: result.reservations.released,
+      },
+    });
+    revalidatePath("/admin");
+    return {
+      ok: true,
+      outboxProcessed: result.outbox.processed,
+      outboxSynced: result.outbox.synced,
+      outboxFailed: result.outbox.failed,
+      reservationsReleased: result.reservations.released,
+    };
+  } catch {
+    return { error: "Maintenance could not be completed. Try again shortly." };
+  }
 }
